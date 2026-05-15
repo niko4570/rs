@@ -1,0 +1,20 @@
+[project]
+name = "research-summarizer-agent"
+version = "0.1.0"
+description = "A beginner-friendly LangChain research summarizer agent."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "beautifulsoup4>=4.12.3",
+  "langchain>=1.0.0",
+  "langchain-openai>=1.0.0",
+  "python-dotenv>=1.0.1",
+  "requests>=2.32.3",
+  "serpapi>=0.1.5",
+]
+
+[project.scripts]
+research-agent = "research_summarizer.cli:main"
+
+[tool.ruff]
+line-length = 100
