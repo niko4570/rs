@@ -23,6 +23,7 @@ def main() -> None:
     if not request:
         raise SystemExit("No research request provided.")
 
+    print("Running research agent... (check LangSmith for detailed trace)", flush=True)
     print(run_agent(request))
 
 
