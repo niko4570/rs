@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import os
 import re
+from datetime import datetime
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from zoneinfo import ZoneInfo
 
 import requests
 import serpapi
@@ -36,10 +39,35 @@ Output format:
 Do not invent citations. If sources are weak or unavailable, say so.
 """
 
+# Per-run fetch cache — cleared at the start of each run_agent() call.
+# Prevents duplicate fetches and keeps context short.
+_fetch_cache: dict[str, str] = {}
+
+TRACKING_PARAMS = frozenset({
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
+    "r", "fbclid", "gclid", "ref", "source", "utm_id",
+})
+
+
+def _normalize_url(url: str) -> str:
+    """Strip tracking query parameters so near-duplicate URLs share a cache key."""
+    parsed = urlparse(url)
+    params = [(k, v) for k, v in parse_qsl(parsed.query) if k.lower() not in TRACKING_PARAMS]
+    query = urlencode(params)
+    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, query, parsed.fragment))
+
 
 def _clean_text(text: str, max_chars: int = 6000) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     return text[:max_chars]
+
+
+@tool
+def current_time() -> str:
+    """Get the real current date and time. Call this whenever you need to know
+    what date it is right now — especially for time-sensitive or recent-event questions."""
+    now = datetime.now(ZoneInfo("America/Los_Angeles"))
+    return f"Current date: {now:%Y-%m-%d} ({now:%A}). Time: {now:%H:%M:%S} {now:%Z}."
 
 
 @tool
@@ -80,13 +108,23 @@ def search_web(query: str) -> str:
 
 @tool
 def fetch_url(url: str) -> str:
-    """Fetch a URL and return readable page text for summarization."""
+    """Fetch a URL and return readable page text for summarization.
+    Duplicate fetches (same URL minus tracking params) are served from cache."""
+    normalized = _normalize_url(url)
+
+    if normalized in _fetch_cache:
+        return f"[CACHED — already fetched this page]\n{_fetch_cache[normalized]}"
+
     headers = {"User-Agent": "research-summarizer-agent/0.1"}
     try:
         response = requests.get(url, headers=headers, timeout=20)
         response.raise_for_status()
+    except requests.HTTPError as exc:
+        # HTTP errors (4xx, 5xx) fail the tool so the model can't trust dead sources.
+        # Not cached, so the model can't retrieve the failure as "content" later.
+        raise RuntimeError(f"URL fetch failed: HTTP {exc.response.status_code}") from exc
     except requests.RequestException as exc:
-        return f"URL fetch failed: {exc}"
+        return f"URL fetch failed (network): {exc}"
 
     soup = BeautifulSoup(response.text, "html.parser")
     for tag in soup(["script", "style", "noscript", "svg"]):
@@ -94,7 +132,10 @@ def fetch_url(url: str) -> str:
 
     title = _clean_text(soup.title.get_text(" "), 200) if soup.title else url
     body = _clean_text(soup.get_text(" "), 8000)
-    return f"Title: {title}\nURL: {url}\nText: {body}"
+    result = f"Title: {title}\nURL: {url}\nText: {body}"
+
+    _fetch_cache[normalized] = result
+    return result
 
 
 @tool
@@ -139,7 +180,7 @@ def build_agent():
     """Create the LangChain research summarizer agent."""
     return create_agent(
         model=_build_model(),
-        tools=[search_web, fetch_url, read_text_file],
+        tools=[current_time, search_web, fetch_url, read_text_file],
         system_prompt=SYSTEM_PROMPT,
         name="research_summarizer",
     )
@@ -147,9 +188,13 @@ def build_agent():
 
 def run_agent(request: str) -> str:
     """Run the agent and return the final response text."""
+    _fetch_cache.clear()
     agent = build_agent()
     try:
-        result = agent.invoke({"messages": [{"role": "user", "content": request}]})
+        result = agent.invoke(
+            {"messages": [{"role": "user", "content": request}]},
+            config={"recursion_limit": 15},
+        )
     except APIError as e:
         return (
             "Model API call failed. Check your API key, account balance, model name, "
@@ -157,16 +202,3 @@ def run_agent(request: str) -> str:
         )
     final_message = result["messages"][-1]
     return getattr(final_message, "content", str(final_message))
-
-# For async support, you can create an async version of run_agent like this:
-# async def run_agent_async(request: str) -> str:
-#     agent = build_agent()
-#     try:
-#         result = await agent.ainvoke({"messages": [{"role": "user", "content": request}]})
-#     except APIError as e:
-#         return (
-#             "Model API call failed. Check your API key, account balance, model name, "
-#             f"and base URL. Provider error: {e}"
-#         )
-#     final_message = result["messages"][-1]
-#     return getattr(final_message, "content", str(final_message))
