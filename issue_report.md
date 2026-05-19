@@ -2,7 +2,7 @@
 
 ## Context
 
-This report summarizes the latest LangSmith test results for the `research_summarizer` agent and lists the current issues observed during local testing.
+This report tracks issues observed during local testing of the `research_summarizer` agent, confirmed by LangSmith traces.
 
 Project: `research-summarizer-agent`
 
@@ -10,49 +10,50 @@ Project: `research-summarizer-agent`
 
 Recent top-level runs observed in LangSmith:
 
-| Prompt                                                                                                         | Status  | Latency | Notes                                         |
-| -------------------------------------------------------------------------------------------------------------- | ------- | ------: | --------------------------------------------- |
-| `Summarize README.md in 2 bullets`                                                                             | Success |  ~17.6s | Local file reading and summarization worked.  |
-| `Summarize README.md in 2 bullets`                                                                             | Error   |  ~14.3s | Failed before the DeepSeek thinking-mode fix. |
-| `搜索关于特朗普访华的最新新闻。Compare multiple sources and give me a beginner-friendly summary with sources.` | Success | ~386.8s | Completed, but took over 6 minutes.           |
-| `Research news about Trump visiting China in May 2026. Give a beginner-friendly summary with sources.`         | Success | ~297.7s | Completed, but took about 5 minutes.          |
+| Prompt | Status | Latency | Notes |
+| ------ | ------ | ------: | ----- |
+| `Check today's latest news about the Russia-Ukraine conflict` | Success | ~88s | 13 tool calls: `current_time` ✅, but 2 index-page fetches, 1 dead source (Reuters 401), 1 stale search ("2025") |
+| `https://phys.org/news/2026-05-why-is-almost-everyone-right.html` | Success | ~32s | Clean: 1 `fetch_url`, done. |
+| `summarize this post https://open.substack.com/...` | Success | ~83s | Multiple near-duplicate fetches of the same article under different URLs. |
+| `研究并总结2026.5.13特朗普访华这一事件的影响` | Success | ~142s | Completed but excessive tool calls. |
+| `研究并总结昨天特朗普访华这一事件的影响` | Error | ~158s | `APITimeoutError` — model request timed out during web research. |
 
 ## Current Agent Problems
 
-1. Web research runs are too slow.
+1. [x] DeepSeek thinking mode `400` error.
+   Fixed: disabled thinking for `deepseek-v4-*` models.
 
-   The agent can finish web research tasks, but recent LangSmith traces show latencies around 5-6 minutes. From the terminal, this looks like the agent is stuck or hanging.
+2. [x] Search tool was fragile (HTML scraping).
+   Fixed: replaced with SerpApi SDK integration.
 
-2. The CLI gives no progress feedback.
+3. [x] Model didn't know current date.
+   Fixed: added `current_time` tool so the agent checks the clock when needed.
 
-   While the agent is working, the user sees no intermediate status. Long-running web research tasks therefore appear frozen even when LangSmith shows the run is still active.
+4. The agent runs open-loop — no memory of what it already fetched.
 
-3. [x] The search tool is fragile.
+   Every problem below shares one root cause: the agent doesn't track its own state within a run. Earlier tool results fall out of the model's attention window as context grows, causing it to repeat work, chase dead ends, and forget what it learned.
 
-   Fixed by replacing HTML scraping with SerpApi's Google search SDK integration.
+   Symptoms:
+   - Failed fetches (Reuters 401) treated as usable sources
+   - Index pages fetched after already having article content from the same domain
+   - `current_time` result forgotten (searched "2025" after getting "2026-05-18")
+   - 9 fetch calls + 3 searches for one news summary (13 total tool calls)
 
-4. The agent may fetch broad news index pages instead of specific articles.
+5. CLI gives no progress feedback.
+   While the agent is working, the user sees no intermediate status.
 
-   LangSmith showed `fetch_url` calls to pages such as BBC China news index pages and AP topic pages. These are less precise than article URLs and can add noise or latency.
+## Root Cause
 
-5. Failed URL fetches are treated as successful tool runs.
+The LangChain agent loop is stateless between turns. Every turn, the model gets the full message history, but as context grows past 8-10 turns with full page texts injected, earlier tool results fall outside the model's attention window. The model then repeats fetches, chases index pages, forgets dates, and over-fetches — all different symptoms of the same underlying problem.
 
-   Example from LangSmith: a CNN URL returned a `404 Client Error`, but the tool run itself had status `success` because the tool returned the error as text. This makes debugging harder and may encourage the model to continue using weak sources.
+## Fix: Stateful fetch cache within a run
 
-6. There is no explicit max runtime or iteration guard.
+A URL fetch cache that lives for one `run_agent()` call addresses the root cause:
+- Normalize URLs (strip tracking params) → cache hit on near-duplicates
+- Return `[CACHED]` on hit → model sees it already has the content
+- Don't cache failed fetches → dead sources can't be "trusted" later
+- Raise on HTTP errors → LangSmith marks tool as error
+- Shorter context (fewer duplicate fetches) → model keeps earlier results in attention
 
-   The agent currently relies on the default LangChain/LangGraph behavior. For web research, the project should add clearer limits so the agent fails fast or returns partial results instead of running for several minutes.
+This one mechanism replaces four separate prompt-rule patches.
 
-7. DeepSeek `deepseek-v4-pro` required a provider-specific workaround.
-
-   Earlier LangSmith traces showed a `400` error: `The reasoning_content in the thinking mode must be passed back to the API.` This was caused by DeepSeek thinking mode with tool calls. The project now disables thinking mode for `deepseek-v4-*` models, but this provider-specific behavior should be documented and tested.
-
-## Recommended Fixes
-
-1. Add a max runtime or timeout for full agent runs.
-2. Add a max iteration/tool-call limit for web research.
-3. Improve CLI progress output so users can see when search, fetch, and model steps are happening.
-4. [x] Replace HTML search scraping with a more reliable search provider API.
-5. Prefer specific article URLs over broad news/category pages.
-6. Mark failed fetches more clearly so the agent can avoid treating them as useful sources.
-7. Add tests for DeepSeek model configuration and web-tool failure cases.
