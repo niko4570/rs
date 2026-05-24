@@ -40,13 +40,16 @@ Do not invent citations. If sources are weak or unavailable, say so.
 """
 
 # Per-run fetch cache — cleared at the start of each run_agent() call.
-# Prevents duplicate fetches and keeps context short.
 _fetch_cache: dict[str, str] = {}
 
 TRACKING_PARAMS = frozenset({
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
     "r", "fbclid", "gclid", "ref", "source", "utm_id",
 })
+
+
+def _now() -> datetime:
+    return datetime.now(ZoneInfo("America/Los_Angeles"))
 
 
 def _normalize_url(url: str) -> str:
@@ -63,16 +66,23 @@ def _clean_text(text: str, max_chars: int = 6000) -> str:
 
 
 @tool
-def current_time() -> str:
-    """Get the real current date and time. Call this whenever you need to know
-    what date it is right now — especially for time-sensitive or recent-event questions."""
-    now = datetime.now(ZoneInfo("America/Los_Angeles"))
-    return f"Current date: {now:%Y-%m-%d} ({now:%A}). Time: {now:%H:%M:%S} {now:%Z}."
-
-
-@tool
 def search_web(query: str) -> str:
-    """Search the public web for a research query and return result titles, URLs, and snippets."""
+    """Search the public web for a research query and return result titles, URLs, and snippets.
+    Stale years in freshness-oriented queries are silently corrected."""
+    freshness_query = re.search(
+        r"\b(latest|recent|today|current|now|news|updates?|this\s+(?:week|month|year))\b",
+        query,
+        flags=re.IGNORECASE,
+    )
+    if freshness_query:
+        current_year = _now().year
+        stale_years = {str(year) for year in range(current_year - 3, current_year)}
+        query = re.sub(
+            r"\b20\d{2}\b",
+            lambda match: str(current_year) if match.group(0) in stale_years else match.group(0),
+            query,
+        )
+
     load_dotenv()
     api_key = os.getenv("SERPAPI_API_KEY")
     if not api_key:
@@ -120,9 +130,7 @@ def fetch_url(url: str) -> str:
         response = requests.get(url, headers=headers, timeout=20)
         response.raise_for_status()
     except requests.HTTPError as exc:
-        # HTTP errors (4xx, 5xx) fail the tool so the model can't trust dead sources.
-        # Not cached, so the model can't retrieve the failure as "content" later.
-        raise RuntimeError(f"URL fetch failed: HTTP {exc.response.status_code}") from exc
+        return f"FETCH ERROR (source unavailable): HTTP {exc.response.status_code}"
     except requests.RequestException as exc:
         return f"URL fetch failed (network): {exc}"
 
@@ -180,7 +188,7 @@ def build_agent():
     """Create the LangChain research summarizer agent."""
     return create_agent(
         model=_build_model(),
-        tools=[current_time, search_web, fetch_url, read_text_file],
+        tools=[search_web, fetch_url, read_text_file],
         system_prompt=SYSTEM_PROMPT,
         name="research_summarizer",
     )
@@ -193,7 +201,7 @@ def run_agent(request: str) -> str:
     try:
         result = agent.invoke(
             {"messages": [{"role": "user", "content": request}]},
-            config={"recursion_limit": 15},
+            config={"recursion_limit": 25},
         )
     except APIError as e:
         return (
