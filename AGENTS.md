@@ -8,10 +8,10 @@ A LangChain-based research summarizer agent that accepts a topic, URL, or local 
 - **Framework:** LangChain (`create_agent`, not LangGraph)
 - **LLM:** OpenAI-compatible API (DeepSeek primary, also OpenAI)
 - **Search:** SerpApi (Google)
-- **Parsing:** BeautifulSoup (HTML), Python stdlib (local files)
+- **Parsing:** trafilatura (HTML/text extraction), Python stdlib (local files)
 - **Tracing:** LangSmith (optional)
 - **Linting:** Ruff, line-length 100
-- **Testing:** `unittest` (not pytest)
+- **Testing:** `pytest` with `pytest-mock`
 - **Package manager:** pip (editable install: `pip install -e .`)
 - **CLI entry point:** `research-agent` (also `python -m research_summarizer.cli`)
 
@@ -23,14 +23,15 @@ research_summarizer/
   agent.py      — tools, model builder, agent factory, run loop
   cli.py        — argparse entry point
 tests/
-  test_tools.py — unit tests for search_web, fetch_url, read_text_file, _normalize_url
+  test_tools.py — pytest tests for search_web, fetch_url, read_text_file, _normalize_url
 ```
 
 **Agent flow:** `cli.py` calls `run_agent(request)` → clears fetch cache → `build_agent()` creates a LangChain agent with 3 tools → `agent.invoke()` runs the agent loop (max 25 recursion steps) → returns final message content.
 
 **Three tools** registered on the agent:
+
 1. `search_web(query)` — SerpApi Google search, auto-corrects stale years in freshness queries
-2. `fetch_url(url)` — HTTP GET + BeautifulSoup text extraction, caches per-run with URL normalization
+2. `fetch_url(url)` — HTTP GET + trafilatura text extraction, caches per-run with URL normalization
 3. `read_text_file(path)` — reads local .txt/.md files, refuses paths outside project root
 
 ## Development Workflow
@@ -44,6 +45,7 @@ pip install -e .
 ```
 
 Copy `.env.example` to `.env` and fill in:
+
 - `OPENAI_API_KEY` + `OPENAI_BASE_URL` + `OPENAI_MODEL` (required)
 - `SERPAPI_API_KEY` (required for web search)
 - LangSmith vars (optional)
@@ -69,16 +71,18 @@ python -m research_summarizer.cli "query"
 ### Testing
 
 ```bash
-python -m unittest discover tests
+pytest
 # or single file
-python -m unittest tests.test_tools
+pytest tests/test_tools.py
 ```
 
-Tests use `unittest.TestCase` with `unittest.mock.patch`. The test suite covers:
+Tests use `pytest` with `pytest-mock`. The test suite covers:
+
 - `search_web`: missing API key, result parsing, stale-year correction, historical year preservation, error reporting
 - `fetch_url`: page text extraction, cache hits (same URL + tracking-param variants), HTTP errors, network errors, errors-not-cached
-- `read_text_file`: reading project files, refusing out-of-project paths
+- `read_text_file`: reading project files, refusing out-of-project paths, relative path resolution
 - `_normalize_url`: UTM stripping, tracking param removal, preserving valid params, clean URLs
+- tool registry and agent construction: `get_tools()`, `_TOOL_REGISTRY`, `build_agent()` tool overrides
 
 ### Linting
 
@@ -129,7 +133,7 @@ Set to 25 (`config={"recursion_limit": 25}`). This is intentionally generous —
 
 5. **The agent runs open-loop within a single invocation.** There's no persistent memory across `run_agent()` calls. Each call gets a fresh cache and fresh agent instance.
 
-6. **Tests use `unittest`, not pytest.** Don't add pytest-style fixtures or `pytest.mark` decorators.
+6. **Tests use `pytest`, not `unittest`.** The repository uses `pytest` with `pytest-mock` and prefers simple fixture usage.
 
 7. **The `.env` file is gitignored.** Never commit API keys. Use `.env.example` as a template.
 
@@ -138,6 +142,7 @@ Set to 25 (`config={"recursion_limit": 25}`). This is intentionally generous —
 The known failure mode: as context grows past 8-10 turns with full page texts, earlier tool results fall out of the model's attention window. The model then repeats fetches, chases index pages, and over-fetches.
 
 Mitigations in place:
+
 - Fetch cache eliminates duplicate HTTP calls
 - `[CACHED]` prefix tells the model it already has the content (shorter context than re-fetching)
 - `_clean_text()` caps fetch output at 8,000 chars and search snippets at 300 chars
