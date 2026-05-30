@@ -1,0 +1,160 @@
+Metadata-Version: 2.4
+Name: research-summarizer-agent
+Version: 0.1.0
+Summary: A beginner-friendly LangChain research summarizer agent.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: beautifulsoup4>=4.12.3
+Requires-Dist: langchain>=1.0.0
+Requires-Dist: langchain-openai>=1.0.0
+Requires-Dist: python-dotenv>=1.0.1
+Requires-Dist: requests>=2.32.3
+Requires-Dist: serpapi>=0.1.5
+
+# Research Summarizer Agent
+
+A beginner-friendly LangChain research summarizer agent that accepts a topic, URL, or local text file path and returns a summary with key details, sources, and caveats.
+
+## Features
+
+- **Web Search**: Searches Google through SerpApi for topic research
+- **URL Fetching**: Reads and summarizes web pages
+- **Local File Reading**: Processes local `.txt` or `.md` files
+- **LangSmith Tracing**: Ready for tracing and debugging with LangSmith
+- **Multiple LLM Support**: Compatible with OpenAI and DeepSeek models
+
+## Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/yourusername/research-summarizer-agent.git
+   cd research-summarizer-agent
+   ```
+
+2. Create and activate a virtual environment:
+
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+
+3. Install the package:
+   ```bash
+   pip install -e .
+   ```
+
+## Configuration
+
+Create a `.env` file in the project root with your API keys:
+
+For OpenAI:
+
+```bash
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4o-mini
+```
+
+For DeepSeek:
+
+```bash
+DEEPSEEK_API_KEY=...
+OPENAI_BASE_URL=https://api.deepseek.com
+OPENAI_MODEL=deepseek-chat
+```
+
+You also need a SerpApi key for web search:
+
+```bash
+SERPAPI_API_KEY=...
+```
+
+## Usage
+
+Run the agent from the command line:
+
+```bash
+research-agent "Summarize the latest news about AI in 2026"
+```
+
+Or with a URL:
+
+```bash
+research-agent "https://example.com/article"
+```
+
+Or with a local file:
+
+```bash
+research-agent "/path/to/your/file.md"
+```
+
+If no argument is provided, you'll be prompted to enter a research request.
+
+## Known Issues
+
+- Web research can be slow (5-6 minutes for complex queries)
+- No progress feedback during long-running tasks
+- May fetch broad index pages instead of specific articles
+- Failed URL fetches are not properly handled
+- No explicit runtime limits
+- DeepSeek v4 models require disabling thinking mode
+
+## Development
+
+This project uses:
+
+- Python 3.11+
+- LangChain for agent framework
+- Ruff for linting
+
+## License
+
+[MIT License](LICENSE)
+
+This folder already had a `deepseek_api` variable, so the agent also accepts that
+name for convenience.
+
+For Google search through SerpApi:
+
+```bash
+SERPAPI_API_KEY=...
+```
+
+## Optional LangSmith Tracing
+
+Add these to `.env` if you want to see traces, tool calls, latency, and errors in
+LangSmith:
+
+```bash
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=lsv2_...
+LANGSMITH_PROJECT=research-summarizer-agent
+```
+
+## Run
+
+```bash
+python -m research_summarizer.cli "Research and summarize LangChain vs LangGraph for beginners"
+```
+
+You can also pass a URL:
+
+```bash
+python -m research_summarizer.cli "Summarize https://docs.langchain.com/oss/python/langchain/overview"
+```
+
+Or a local file:
+
+```bash
+python -m research_summarizer.cli "Summarize README.md"
+```
+
+## Normal Development Workflow
+
+1. Start with one clear job: research and summarize source material.
+2. Add the smallest useful tools: search, fetch URL, read file.
+3. Use LangChain for the agent loop.
+4. Use LangSmith tracing while testing.
+5. Save 5-10 test prompts and check whether the answer is accurate, cited, and concise.
+6. Move to LangGraph later if you need a stricter multi-step workflow.

@@ -37,6 +37,7 @@ Output format:
 - Caveats: what may be missing, outdated, or uncertain
 
 Do not invent citations. If sources are weak or unavailable, say so.
+- If a fetch returns `[FETCH_ERROR]`, treat that source as unavailable. Do not cite it or use its content.
 """
 
 # Per-run fetch cache — cleared at the start of each run_agent() call.
@@ -130,9 +131,9 @@ def fetch_url(url: str) -> str:
         response = requests.get(url, headers=headers, timeout=20)
         response.raise_for_status()
     except requests.HTTPError as exc:
-        return f"FETCH ERROR (source unavailable): HTTP {exc.response.status_code}"
+        return f"[FETCH_ERROR] Source unavailable: HTTP {exc.response.status_code}"
     except requests.RequestException as exc:
-        return f"URL fetch failed (network): {exc}"
+        return f"[FETCH_ERROR] Network failure: {exc}"
 
     soup = BeautifulSoup(response.text, "html.parser")
     for tag in soup(["script", "style", "noscript", "svg"]):

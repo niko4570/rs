@@ -184,7 +184,7 @@ class FetchUrlTests(unittest.TestCase):
 
         result = fetch_url.invoke({"url": "https://nytimes.com/article"})
 
-        self.assertIn("FETCH ERROR (source unavailable)", result)
+        self.assertIn("[FETCH_ERROR] Source unavailable", result)
         self.assertIn("HTTP 403", result)
 
     @patch("research_summarizer.agent.requests.get")
@@ -193,7 +193,7 @@ class FetchUrlTests(unittest.TestCase):
 
         result = fetch_url.invoke({"url": "https://down.example.com"})
 
-        self.assertIn("URL fetch failed (network)", result)
+        self.assertIn("[FETCH_ERROR] Network failure", result)
         self.assertIn("Connection refused", result)
 
     @patch("research_summarizer.agent.requests.get")
