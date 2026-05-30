@@ -13,8 +13,18 @@ dependencies = [
   "serpapi>=0.1.5",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-mock>=3.0",
+]
+
 [project.scripts]
 research-agent = "research_summarizer.cli:main"
 
 [tool.ruff]
 line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
