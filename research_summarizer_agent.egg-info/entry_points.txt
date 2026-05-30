@@ -1,0 +1,2 @@
+[console_scripts]
+research-agent = research_summarizer.cli:main

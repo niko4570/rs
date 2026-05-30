@@ -42,6 +42,8 @@ Do not invent citations. If sources are weak or unavailable, say so.
 # Per-run fetch cache — cleared at the start of each run_agent() call.
 _fetch_cache: dict[str, str] = {}
 
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 TRACKING_PARAMS = frozenset({
     "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
     "r", "fbclid", "gclid", "ref", "source", "utm_id",
@@ -149,12 +151,21 @@ def fetch_url(url: str) -> str:
 @tool
 def read_text_file(path: str) -> str:
     """Read a local text or markdown file from the current project for summarization."""
-    file_path = Path(path).expanduser().resolve()
-    cwd = Path.cwd().resolve()
-    if cwd not in file_path.parents and file_path != cwd:
+    file_path = Path(path).expanduser()
+    if not file_path.is_absolute():
+        file_path = (_PROJECT_ROOT / file_path).resolve()
+    else:
+        file_path = file_path.resolve()
+
+    # Security: refuse paths outside the project root
+    try:
+        file_path.relative_to(_PROJECT_ROOT)
+    except ValueError:
         return "Refusing to read outside the current project folder."
+
     if not file_path.exists() or not file_path.is_file():
         return f"File not found: {path}"
+
     return _clean_text(file_path.read_text(encoding="utf-8"), 10000)
 
 

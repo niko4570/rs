@@ -20,7 +20,7 @@ class ReadTextFileTests(unittest.TestCase):
             source = root / "source.md"
             source.write_text("Research notes about LangChain.", encoding="utf-8")
 
-            with patch("pathlib.Path.cwd", return_value=root.resolve()):
+            with patch("research_summarizer.agent._PROJECT_ROOT", root.resolve()):
                 result = read_text_file.invoke({"path": str(source)})
 
             self.assertIn("Research notes about LangChain.", result)
@@ -29,10 +29,22 @@ class ReadTextFileTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
 
-            with patch("pathlib.Path.cwd", return_value=root.resolve()):
+            with patch("research_summarizer.agent._PROJECT_ROOT", root.resolve()):
                 result = read_text_file.invoke({"path": "/etc/passwd"})
 
             self.assertIn("Refusing to read outside", result)
+
+    def test_resolves_relative_paths(self):
+        """Relative paths should resolve against _PROJECT_ROOT."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "notes.md"
+            source.write_text("Relative path content.", encoding="utf-8")
+
+            with patch("research_summarizer.agent._PROJECT_ROOT", root.resolve()):
+                result = read_text_file.invoke({"path": "notes.md"})
+
+            self.assertIn("Relative path content.", result)
 
 
 class SearchWebTests(unittest.TestCase):
