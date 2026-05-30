@@ -183,6 +183,20 @@ def read_text_file(path: str) -> str:
     return _clean_text(file_path.read_text(encoding="utf-8"), 10000)
 
 
+# === Tool Registry ===
+# Centralized list of all tools the agent can use.
+# Add new tools here — they're picked up automatically by build_agent().
+_TOOL_REGISTRY: list = [search_web, fetch_url, read_text_file]
+
+
+def get_tools() -> list:
+    """Return a shallow copy of the current tool list.
+
+    Copying prevents callers from accidentally mutating the registry.
+    """
+    return list(_TOOL_REGISTRY)
+
+
 def _build_model(temperature: float = 0.0, timeout: int = 120) -> ChatOpenAI:
     load_dotenv()
 
@@ -209,20 +223,32 @@ def _build_model(temperature: float = 0.0, timeout: int = 120) -> ChatOpenAI:
     )
 
 
-def build_agent():
-    """Create the LangChain research summarizer agent."""
+def build_agent(tools=None):
+    """Create the LangChain research summarizer agent.
+
+    Args:
+        tools: Optional tool list override. Defaults to get_tools().
+               Pass a custom list for testing.
+    """
+    if tools is None:
+        tools = get_tools()
     return create_agent(
         model=_build_model(),
-        tools=[search_web, fetch_url, read_text_file],
+        tools=tools,
         system_prompt=SYSTEM_PROMPT,
         name="research_summarizer",
     )
 
 
-def run_agent(request: str) -> str:
-    """Run the agent and return the final response text."""
+def run_agent(request: str, tools=None) -> str:
+    """Run the agent and return the final response text.
+
+    Args:
+        request: The user's research query or URL.
+        tools: Optional tool list override (passed to build_agent).
+    """
     _fetch_cache.clear()
-    agent = build_agent()
+    agent = build_agent(tools=tools)
     try:
         result = agent.invoke(
             {"messages": [{"role": "user", "content": request}]},

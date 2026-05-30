@@ -136,6 +136,38 @@ class UrlNormalizationTests(unittest.TestCase):
         self.assertEqual(result, url)
 
 
+class ToolRegistryTests(unittest.TestCase):
+    def test_contains_expected_tools(self):
+        from research_summarizer.agent import _TOOL_REGISTRY
+
+        tool_names = [t.name for t in _TOOL_REGISTRY]
+        self.assertIn("search_web", tool_names)
+        self.assertIn("fetch_url", tool_names)
+        self.assertIn("read_text_file", tool_names)
+
+    def test_get_tools_returns_copy(self):
+        from research_summarizer.agent import _TOOL_REGISTRY, get_tools
+
+        tools = get_tools()
+        self.assertEqual(tools, _TOOL_REGISTRY)
+        self.assertIsNot(tools, _TOOL_REGISTRY)
+
+        tools.append("fake")
+        self.assertNotIn("fake", _TOOL_REGISTRY)
+
+    def test_build_agent_uses_registry_by_default(self):
+        from research_summarizer.agent import build_agent
+
+        agent = build_agent()
+        self.assertIsNotNone(agent)
+
+    def test_build_agent_accepts_custom_tools(self):
+        from research_summarizer.agent import build_agent, search_web
+
+        agent = build_agent(tools=[search_web])
+        self.assertIsNotNone(agent)
+
+
 class FetchUrlTests(unittest.TestCase):
     def setUp(self):
         from research_summarizer import agent
