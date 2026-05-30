@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 import serpapi
-from bs4 import BeautifulSoup
+import trafilatura
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.tools import tool
@@ -134,13 +134,26 @@ def fetch_url(url: str) -> str:
     except requests.RequestException as exc:
         return f"URL fetch failed (network): {exc}"
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    for tag in soup(["script", "style", "noscript", "svg"]):
-        tag.decompose()
+    downloaded = response.text
 
-    title = _clean_text(soup.title.get_text(" "), 200) if soup.title else url
-    body = _clean_text(soup.get_text(" "), 8000)
-    result = f"Title: {title}\nURL: {url}\nText: {body}"
+    # Extract clean body text with trafilatura
+    body = trafilatura.extract(
+        downloaded,
+        include_comments=False,
+        include_tables=True,
+        no_fallback=False,
+    )
+
+    if not body:
+        return "[FETCH_ERROR] No extractable content from this page."
+
+    # Extract title from raw HTML <title> tag (simple, no BeautifulSoup needed)
+    import re as _re
+    title_match = _re.search(r"<title[^>]*>(.*?)</title>", downloaded, _re.IGNORECASE | _re.DOTALL)
+    title = _clean_text(title_match.group(1), 200) if title_match else url
+
+    body_clean = _clean_text(body, 8000)
+    result = f"Title: {title}\nURL: {url}\nText: {body_clean}"
 
     _fetch_cache[normalized] = result
     return result
