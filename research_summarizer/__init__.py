@@ -6,7 +6,7 @@ from research_summarizer.agent import (
     get_tools,
     run_agent,
 )
-from research_summarizer.models import Source, SummaryResult
+from research_summarizer.models import RunState, Source, SummaryResult, ValidationIssue, ValidationReport
 from research_summarizer.parser import ParseError, parse_summary
 
 __all__ = [
@@ -16,6 +16,9 @@ __all__ = [
     "_TOOL_REGISTRY",
     "Source",
     "SummaryResult",
+    "RunState",
+    "ValidationIssue",
+    "ValidationReport",
     "parse_summary",
     "ParseError",
 ]
