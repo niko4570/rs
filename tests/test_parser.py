@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from research_summarizer.parser import ParseError, _extract_json, parse_summary
+from research_summarizer.parser import ParseError, _extract_json, parse_summary, parse_summary_with_retry
 
 
 # ---------------------------------------------------------------------------
@@ -180,3 +180,78 @@ class TestParseSummaryRejects:
         model.invoke.side_effect = RuntimeError("API connection lost")
         with pytest.raises(ParseError, match="Model call for parsing failed"):
             parse_summary("raw", model)
+
+
+# ---------------------------------------------------------------------------
+# parse_summary_with_retry
+# ---------------------------------------------------------------------------
+
+
+class TestParseSummaryWithRetry:
+    """Tests for the retry behavior in parse_summary_with_retry."""
+
+    def test_succeeds_first_attempt_no_retry(self):
+        """When first parse succeeds, model.invoke is called exactly once."""
+        model = _mock_model(_VALID_JSON)
+        result = parse_summary_with_retry("some raw answer", model)
+        assert len(result.summary_bullets) == 4
+        assert model.invoke.call_count == 1
+
+    def test_retries_on_first_failure(self):
+        """When first parse fails, retry with error feedback succeeds."""
+        model = Mock()
+        # First call: return invalid JSON (too few bullets)
+        bad_response = Mock()
+        bad_response.content = json.dumps({
+            "summary_bullets": ["only one"],
+            "key_details": "details",
+            "sources": [],
+            "caveats": ["specific"],
+        })
+        # Second call: return valid JSON
+        good_response = Mock()
+        good_response.content = _VALID_JSON
+        model.invoke.side_effect = [bad_response, good_response]
+
+        result = parse_summary_with_retry("raw answer", model)
+        assert len(result.summary_bullets) == 4
+        assert model.invoke.call_count == 2
+
+    def test_retry_prompt_contains_error(self):
+        """The second call prompt should include the error message."""
+        model = Mock()
+        bad_response = Mock()
+        bad_response.content = json.dumps({
+            "summary_bullets": ["a"],
+            "key_details": "x",
+            "sources": [],
+            "caveats": ["y"],
+        })
+        good_response = Mock()
+        good_response.content = _VALID_JSON
+        model.invoke.side_effect = [bad_response, good_response]
+
+        parse_summary_with_retry("raw answer", model)
+
+        # Second call should contain the error about bullet count
+        second_call_args = model.invoke.call_args_list[1]
+        second_call_input = second_call_args[0][0]  # list of messages
+        retry_text = str(second_call_input)
+        assert "summary_bullets" in retry_text.lower() or "list" in retry_text.lower()
+
+    def test_fails_both_attempts(self):
+        """When both attempts fail, raises ParseError after max_attempts calls."""
+        model = Mock()
+        bad_response = Mock()
+        bad_response.content = json.dumps({
+            "summary_bullets": ["a"],
+            "key_details": "x",
+            "sources": [],
+            "caveats": ["y"],
+        })
+        model.invoke.return_value = bad_response
+
+        with pytest.raises(ParseError):
+            parse_summary_with_retry("raw answer", model, max_attempts=2)
+
+        assert model.invoke.call_count == 2

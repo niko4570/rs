@@ -7,7 +7,7 @@ from research_summarizer.agent import (
     run_agent,
 )
 from research_summarizer.models import RunState, Source, SummaryResult, ValidationIssue, ValidationReport
-from research_summarizer.parser import ParseError, parse_summary
+from research_summarizer.parser import ParseError, parse_summary, parse_summary_with_retry
 
 __all__ = [
     "build_agent",
@@ -20,5 +20,6 @@ __all__ = [
     "ValidationIssue",
     "ValidationReport",
     "parse_summary",
+    "parse_summary_with_retry",
     "ParseError",
 ]

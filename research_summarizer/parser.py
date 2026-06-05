@@ -4,8 +4,7 @@ Strategy (conservative, DeepSeek-compatible):
 1. Take the raw final answer text.
 2. Ask the model to convert it to JSON matching SummaryResult schema.
 3. Validate with Pydantic.
-
-No retry yet — that comes in Phase 1c.
+4. If it fails, retry once with the specific error as feedback.
 """
 
 from __future__ import annotations
@@ -113,3 +112,54 @@ def parse_summary(raw_answer: str, model: ChatOpenAI) -> SummaryResult:
         ) from exc
 
     return result
+
+
+def _build_retry_prompt(original_answer: str, error_message: str) -> str:
+    """Build a retry prompt that includes the specific error to fix."""
+    return (
+        f"Your previous JSON conversion had errors. Fix them and return ONLY the corrected JSON.\n\n"
+        f"Errors to fix:\n{error_message}\n\n"
+        f"Original summary to convert:\n{original_answer}"
+    )
+
+
+def parse_summary_with_retry(
+    raw_answer: str,
+    model: ChatOpenAI,
+    max_attempts: int = 2,
+) -> SummaryResult:
+    """Parse a raw summary with one retry on failure.
+
+    First attempt: normal parsing.
+    If that fails: retry once with the specific error as feedback,
+    so the model can fix structural issues without re-running research.
+
+    Args:
+        raw_answer: The final text output from the agent.
+        model: A ChatOpenAI instance to use for parsing.
+        max_attempts: Maximum number of parse attempts (default 2).
+
+    Returns:
+        A validated SummaryResult.
+
+    Raises:
+        ParseError: If all attempts fail.
+    """
+    last_error: ParseError | None = None
+
+    for attempt in range(max_attempts):
+        try:
+            if attempt == 0:
+                return parse_summary(raw_answer, model)
+            else:
+                # Retry with failure feedback
+                retry_prompt = _build_retry_prompt(
+                    raw_answer, str(last_error)
+                )
+                return parse_summary(retry_prompt, model)
+        except ParseError as exc:
+            last_error = exc
+            logger.debug("Parse attempt %d failed: %s", attempt + 1, exc)
+
+    # All attempts exhausted — re-raise the last error
+    raise last_error  # type: ignore[misc]
