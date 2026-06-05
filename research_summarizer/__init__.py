@@ -6,5 +6,20 @@ from research_summarizer.agent import (
     get_tools,
     run_agent,
 )
+from research_summarizer.models import RunState, Source, SummaryResult, ValidationIssue, ValidationReport
+from research_summarizer.parser import ParseError, parse_summary, parse_summary_with_retry
 
-__all__ = ["build_agent", "run_agent", "get_tools", "_TOOL_REGISTRY"]
+__all__ = [
+    "build_agent",
+    "run_agent",
+    "get_tools",
+    "_TOOL_REGISTRY",
+    "Source",
+    "SummaryResult",
+    "RunState",
+    "ValidationIssue",
+    "ValidationReport",
+    "parse_summary",
+    "parse_summary_with_retry",
+    "ParseError",
+]

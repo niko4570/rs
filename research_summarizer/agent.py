@@ -18,6 +18,9 @@ from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from openai import APIError
 
+from research_summarizer.models import SummaryResult
+from research_summarizer.parser import ParseError, parse_summary
+
 
 SYSTEM_PROMPT = """You are a Research Summarizer Agent.
 
@@ -240,12 +243,10 @@ def build_agent(tools=None):
     )
 
 
-def run_agent(request: str, tools=None) -> str:
-    """Run the agent and return the final response text.
+def _run_agent_raw(request: str, tools=None) -> str:
+    """Run the agent loop and return raw text output.
 
-    Args:
-        request: The user's research query or URL.
-        tools: Optional tool list override (passed to build_agent).
+    Internal helper. External callers should use run_agent() for structured output.
     """
     _fetch_cache.clear()
     agent = build_agent(tools=tools)
@@ -255,9 +256,31 @@ def run_agent(request: str, tools=None) -> str:
             config={"recursion_limit": 25},
         )
     except APIError as e:
-        return (
+        raise APIError(
             "Model API call failed. Check your API key, account balance, model name, "
             f"and base URL. Provider error: {e}"
-        )
+        ) from e
     final_message = result["messages"][-1]
     return getattr(final_message, "content", str(final_message))
+
+
+def run_agent(request: str, tools=None) -> SummaryResult:
+    """Run the agent and return a typed SummaryResult.
+
+    Runs the agent loop, then parses the final answer through the
+    structured output parser for validation.
+
+    Args:
+        request: The user's research query or URL.
+        tools: Optional tool list override.
+
+    Returns:
+        A validated SummaryResult.
+
+    Raises:
+        ParseError: If the final answer cannot be parsed or validated.
+        openai.APIError: If the model API call fails.
+    """
+    raw_answer = _run_agent_raw(request, tools=tools)
+    model = _build_model()
+    return parse_summary(raw_answer, model)
