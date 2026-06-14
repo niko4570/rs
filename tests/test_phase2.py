@@ -32,6 +32,18 @@ def _plan_json(steps: list[dict]) -> str:
     })
 
 
+def _critique_json(score: float = 0.85, should_revise: bool = False) -> str:
+    return json.dumps({
+        "source_fidelity": score,
+        "source_diversity": score,
+        "caveat_specificity": score,
+        "completeness": score,
+        "overall_score": score,
+        "gaps": [],
+        "should_revise": should_revise,
+    })
+
+
 # ---------------------------------------------------------------------------
 # Planner tests
 # ---------------------------------------------------------------------------
@@ -221,6 +233,7 @@ class TestExplicitLoop:
             Mock(content=plan_text),           # plan
             Mock(content="draft summary"),      # summarize
             Mock(content=summary_json),         # parse
+            Mock(content=_critique_json()),     # critique
         ]
 
         with patch.object(
@@ -260,13 +273,13 @@ class TestExplicitLoop:
         })
 
         model = Mock()
+        # Flow: plan → replan → summarize → parse → critique (all pass, no repair/revision)
         model.invoke.side_effect = [
-            Mock(content=plan_text),             # 1. plan
-            Mock(content=replacement_json),      # 2. replan
-            Mock(content="draft summary"),        # 3. summarize
-            Mock(content=self._SUMMARY_JSON),     # 4. parse
-            Mock(content="draft summary"),        # 5. repair summarize (if needed)
-            Mock(content=self._SUMMARY_JSON),     # 6. repair parse (if needed)
+            Mock(content=plan_text),
+            Mock(content=replacement_json),
+            Mock(content="draft summary"),
+            Mock(content=self._SUMMARY_JSON),
+            Mock(content=_critique_json()),
         ]
 
         with patch.object(
@@ -311,17 +324,15 @@ class TestExplicitLoop:
         })
 
         model = Mock()
-        # 1 plan + 3 replans + 1 summarize + 1 parse = 6 calls
-        # + 2 extra for possible repair
+        # Flow: plan → 3 replans → summarize → parse → critique
         model.invoke.side_effect = [
-            Mock(content=plan_text),             # 1. plan
-            Mock(content=replacement_json),      # 2. replan 1
-            Mock(content=replacement_json),      # 3. replan 2
-            Mock(content=replacement_json),      # 4. replan 3
-            Mock(content="draft summary"),        # 5. summarize
-            Mock(content=self._SUMMARY_JSON),     # 6. parse
-            Mock(content="draft summary"),        # 7. repair summarize
-            Mock(content=self._SUMMARY_JSON),     # 8. repair parse
+            Mock(content=plan_text),
+            Mock(content=replacement_json),
+            Mock(content=replacement_json),
+            Mock(content=replacement_json),
+            Mock(content="draft summary"),
+            Mock(content=self._SUMMARY_JSON),
+            Mock(content=_critique_json()),
         ]
 
         with patch.object(

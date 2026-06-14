@@ -1,6 +1,7 @@
 """LangChain agent for researching and summarizing topics."""
 
 from __future__ import annotations
+from typing import Callable
 
 import os
 import re
@@ -18,6 +19,7 @@ from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from openai import APIError
 
+from research_summarizer.critique import critique_output, revise_output
 from research_summarizer.executor import execute_step
 from research_summarizer.models import RunState, StepResult, SummaryResult
 from research_summarizer.parser import ParseError, parse_summary_with_retry
@@ -248,66 +250,59 @@ def build_agent(tools=None):
     )
 
 
-def run_agent(request: str, tools=None) -> SummaryResult:
-    """Run the research agent with an explicit plan-then-execute loop.
-
-    Phase 2 architecture:
-    1. Plan — LLM generates a ResearchPlan
-    2. Execute — code calls tools directly for each step, replanning on failure
-    3. Summarize — LLM produces a summary from collected evidence
-    4. Parse — structured output parser with retry
-    5. Validate — check summary against run state
-
-    Args:
-        request: The user's research query, URL, or file path.
-        tools: Ignored in Phase 2 (kept for backward compatibility).
-               Tool dispatch is now code-driven, not LLM-decided.
-
-    Returns:
-        A validated SummaryResult.
-
-    Raises:
-        ParseError: If the final answer cannot be parsed.
-        openai.APIError: If any model API call fails.
-        ValueError: If planning fails.
-    """
+# Progress callback type: callable taking (stage, message)
+# Stages: plan, execute, replan, summarize, parse, validate, critique, repair, done
+ProgressCallback = Callable[[str, str], None]
+def run_agent(request: str, tools=None, on_progress: ProgressCallback | None = None) -> SummaryResult:
     _fetch_cache.clear()
     model = _build_model()
     state = RunState()
     max_replans = 3
     replan_count = 0
+    best_score = 0.0
+    max_critique_attempts = 2
 
     # 1. PLAN
+    _progress(on_progress, "plan", f"Planning research for: {request}")
     plan = plan_research(request, model)
     if not plan.steps:
         raise ValueError("Plan produced no steps.")
+    _progress(on_progress, "plan", f"Plan ready: {len(plan.steps)} step(s)")
 
     # 2. EXECUTE
     evidence: list[StepResult] = []
     for step in plan.steps:
+        _progress(on_progress, "execute", f"{step.action}: {step.input}")
         result = execute_step(step, state)
         evidence.append(result)
 
         if result.failed and result.retryable:
+            _progress(on_progress, "replan", f"{step.action} failed ({result.error_type}), replanning...")
             replacement = replan_step(
                 step, result, plan, state, model,
                 replan_count=replan_count, max_replans=max_replans,
             )
             if replacement:
                 replan_count += 1
+                _progress(on_progress, "replan", f"Trying alternative: {replacement.action} {replacement.input}")
                 replan_result = execute_step(replacement, state)
                 evidence.append(replan_result)
+            else:
+                _progress(on_progress, "replan", "No viable alternative found")
 
     # 3. SUMMARIZE
+    _progress(on_progress, "summarize", f"Summarizing {len(evidence)} evidence item(s)...")
     draft_text = summarize_evidence(request, evidence, model)
 
     # 4. PARSE
+    _progress(on_progress, "parse", "Parsing structured output...")
     summary = parse_summary_with_retry(draft_text, model)
 
     # 5. VALIDATE
+    _progress(on_progress, "validate", "Validating summary...")
     report = validate_summary(summary, state)
     if not report.passed:
-        # Repair: send validation issues back to the LLM for a revised summary
+        _progress(on_progress, "repair", f"Validation failed ({len(report.issues)} issue(s)), repairing...")
         issue_text = "\n".join(
             f"- [{i.code}] {i.message}" for i in report.issues
         )
@@ -319,5 +314,45 @@ def run_agent(request: str, tools=None) -> SummaryResult:
         )
         revised_text = summarize_evidence(repair_request, evidence, model)
         summary = parse_summary_with_retry(revised_text, model)
+        _progress(on_progress, "repair", "Validation repair complete")
 
+    # 6. CRITIQUE (Phase 3)
+    _progress(on_progress, "critique", "Critiquing summary quality...")
+    critique = critique_output(summary, evidence, model)
+    _progress(
+        on_progress, "critique",
+        f"Score: {critique.overall_score:.2f} "
+        f"(fidelity={critique.source_fidelity:.2f}, "
+        f"diversity={critique.source_diversity:.2f}, "
+        f"caveats={critique.caveat_specificity:.2f}, "
+        f"completeness={critique.completeness:.2f})"
+    )
+
+    # 7. REVISE (bounded loop, max 2 attempts)
+    for attempt in range(max_critique_attempts):
+        if not critique.should_revise or critique.overall_score >= 0.8:
+            break
+        if critique.overall_score <= best_score:
+            _progress(on_progress, "critique", f"Score not improving ({critique.overall_score:.2f} <= {best_score:.2f}), stopping")
+            break
+
+        best_score = critique.overall_score
+        _progress(on_progress, "critique", f"Revision attempt {attempt + 1}/2...")
+
+        revised_draft = revise_output(summary, critique, evidence, model)
+        summary = parse_summary_with_retry(revised_draft, model)
+
+        critique = critique_output(summary, evidence, model)
+        _progress(
+            on_progress, "critique",
+            f"Post-revision score: {critique.overall_score:.2f}"
+        )
+
+    _progress(on_progress, "done", f"Done. Final score: {critique.overall_score:.2f}")
     return summary
+
+
+def _progress(cb: ProgressCallback | None, stage: str, message: str) -> None:
+    """Invoke progress callback if provided."""
+    if cb is not None:
+        cb(stage, message)

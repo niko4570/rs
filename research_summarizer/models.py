@@ -54,6 +54,25 @@ class ValidationReport(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Phase 3: Critique and revise
+# ---------------------------------------------------------------------------
+
+
+class CritiqueResult(BaseModel):
+    """Quality assessment of a summary against its evidence."""
+
+    source_fidelity: float = Field(ge=0.0, le=1.0)
+    source_diversity: float = Field(ge=0.0, le=1.0)
+    caveat_specificity: float = Field(ge=0.0, le=1.0)
+    completeness: float = Field(ge=0.0, le=1.0)
+    overall_score: float = Field(ge=0.0, le=1.0)
+    gaps: list[str] = []
+    should_revise: bool = False
+
+    # A summary needs revision if overall_score < 0.8 or should_revise is True
+
+
+# ---------------------------------------------------------------------------
 # Phase 2: Explicit agent loop
 # ---------------------------------------------------------------------------
 
