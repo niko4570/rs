@@ -51,3 +51,35 @@ class ValidationReport(BaseModel):
 
     passed: bool
     issues: list[ValidationIssue] = []
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: Explicit agent loop
+# ---------------------------------------------------------------------------
+
+
+class ResearchStep(BaseModel):
+    """A single step in a research plan."""
+
+    action: str  # "search", "fetch", "read_file"
+    input: str   # query, URL, or file path
+    purpose: str  # why this step (for replanning context)
+
+
+class ResearchPlan(BaseModel):
+    """A plan produced by the LLM for researching a topic."""
+
+    steps: list[ResearchStep]
+    comparison_strategy: str | None = None
+
+
+class StepResult(BaseModel):
+    """Result of executing a single research step."""
+
+    step: ResearchStep
+    content: str
+    failed: bool = False
+    retryable: bool = False
+    error_type: str | None = None
+    # error_type values: "source_unavailable", "empty_content",
+    #   "no_results", "network_error", "file_not_found"

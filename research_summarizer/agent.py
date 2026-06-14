@@ -18,8 +18,13 @@ from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from openai import APIError
 
-from research_summarizer.models import SummaryResult
-from research_summarizer.parser import ParseError, parse_summary
+from research_summarizer.executor import execute_step
+from research_summarizer.models import RunState, StepResult, SummaryResult
+from research_summarizer.parser import ParseError, parse_summary_with_retry
+from research_summarizer.planner import plan_research
+from research_summarizer.replanner import replan_step
+from research_summarizer.summarizer import summarize_evidence
+from research_summarizer.validation import validate_summary
 
 
 SYSTEM_PROMPT = """You are a Research Summarizer Agent.
@@ -243,44 +248,76 @@ def build_agent(tools=None):
     )
 
 
-def _run_agent_raw(request: str, tools=None) -> str:
-    """Run the agent loop and return raw text output.
-
-    Internal helper. External callers should use run_agent() for structured output.
-    """
-    _fetch_cache.clear()
-    agent = build_agent(tools=tools)
-    try:
-        result = agent.invoke(
-            {"messages": [{"role": "user", "content": request}]},
-            config={"recursion_limit": 25},
-        )
-    except APIError as e:
-        raise APIError(
-            "Model API call failed. Check your API key, account balance, model name, "
-            f"and base URL. Provider error: {e}"
-        ) from e
-    final_message = result["messages"][-1]
-    return getattr(final_message, "content", str(final_message))
-
-
 def run_agent(request: str, tools=None) -> SummaryResult:
-    """Run the agent and return a typed SummaryResult.
+    """Run the research agent with an explicit plan-then-execute loop.
 
-    Runs the agent loop, then parses the final answer through the
-    structured output parser for validation.
+    Phase 2 architecture:
+    1. Plan — LLM generates a ResearchPlan
+    2. Execute — code calls tools directly for each step, replanning on failure
+    3. Summarize — LLM produces a summary from collected evidence
+    4. Parse — structured output parser with retry
+    5. Validate — check summary against run state
 
     Args:
-        request: The user's research query or URL.
-        tools: Optional tool list override.
+        request: The user's research query, URL, or file path.
+        tools: Ignored in Phase 2 (kept for backward compatibility).
+               Tool dispatch is now code-driven, not LLM-decided.
 
     Returns:
         A validated SummaryResult.
 
     Raises:
-        ParseError: If the final answer cannot be parsed or validated.
-        openai.APIError: If the model API call fails.
+        ParseError: If the final answer cannot be parsed.
+        openai.APIError: If any model API call fails.
+        ValueError: If planning fails.
     """
-    raw_answer = _run_agent_raw(request, tools=tools)
+    _fetch_cache.clear()
     model = _build_model()
-    return parse_summary(raw_answer, model)
+    state = RunState()
+    max_replans = 3
+    replan_count = 0
+
+    # 1. PLAN
+    plan = plan_research(request, model)
+    if not plan.steps:
+        raise ValueError("Plan produced no steps.")
+
+    # 2. EXECUTE
+    evidence: list[StepResult] = []
+    for step in plan.steps:
+        result = execute_step(step, state)
+        evidence.append(result)
+
+        if result.failed and result.retryable:
+            replacement = replan_step(
+                step, result, plan, state, model,
+                replan_count=replan_count, max_replans=max_replans,
+            )
+            if replacement:
+                replan_count += 1
+                replan_result = execute_step(replacement, state)
+                evidence.append(replan_result)
+
+    # 3. SUMMARIZE
+    draft_text = summarize_evidence(request, evidence, model)
+
+    # 4. PARSE
+    summary = parse_summary_with_retry(draft_text, model)
+
+    # 5. VALIDATE
+    report = validate_summary(summary, state)
+    if not report.passed:
+        # Repair: send validation issues back to the LLM for a revised summary
+        issue_text = "\n".join(
+            f"- [{i.code}] {i.message}" for i in report.issues
+        )
+        repair_request = (
+            f"Your summary had validation issues. Fix them.\n\n"
+            f"Issues:\n{issue_text}\n\n"
+            f"Original request: {request}\n\n"
+            f"Original summary draft:\n{draft_text}"
+        )
+        revised_text = summarize_evidence(repair_request, evidence, model)
+        summary = parse_summary_with_retry(revised_text, model)
+
+    return summary
