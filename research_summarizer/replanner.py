@@ -10,28 +10,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import ValidationError
 
 from research_summarizer.models import ResearchPlan, ResearchStep, RunState, StepResult
-
-_REPLAN_PROMPT = """A research step failed. Generate ONE replacement step to recover.
-
-Failed step:
-  Action: {action}
-  Input: {input}
-  Purpose: {purpose}
-  Error: {error}
-
-Current plan status (steps done): {completed_steps}
-
-Rules:
-- If search returned no results, try a broader or different search query.
-- If a URL is unavailable (paywall/403), search for the page title instead.
-- If a page had no extractable content, try the next search result.
-- If network failed, suggest a different URL or broader search.
-- If you can't think of a reasonable alternative, return null.
-
-Return ONLY this JSON:
-{{"action": "search", "input": "new query or URL", "purpose": "why this alternative"}}
-
-Or return: null"""
+from research_summarizer.prompts import REPLAN_SYSTEM_PROMPT
 
 
 def _extract_json(text: str) -> str:
@@ -73,18 +52,21 @@ def replan_step(
     if replan_count >= max_replans:
         return None
 
-    completed = [s.step.input for s in [error_result] if not s.failed]  # placeholder
-    prompt = _REPLAN_PROMPT.format(
-        action=failed_step.action,
-        input=failed_step.input,
-        purpose=failed_step.purpose,
-        error=error_result.content[:500],
-        completed_steps=", ".join(completed) if completed else "none yet",
-    )
-
+    completed = sorted(state.read_files | state.fetched_urls | state.searched_urls)
     messages = [
-        SystemMessage(content=prompt),
-        HumanMessage(content="Generate a replacement step or null."),
+        SystemMessage(content=REPLAN_SYSTEM_PROMPT),
+        HumanMessage(
+            content=(
+                "Failed step:\n"
+                f"- action: {failed_step.action}\n"
+                f"- input: {failed_step.input}\n"
+                f"- purpose: {failed_step.purpose}\n"
+                f"- error: {error_result.content[:500]}\n\n"
+                "Completed step inputs:\n"
+                f"{', '.join(completed) if completed else 'none yet'}\n\n"
+                "Generate one replacement step or null."
+            )
+        ),
     ]
     response = model.invoke(messages)
     content = getattr(response, "content", str(response)).strip()
