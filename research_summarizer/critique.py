@@ -15,33 +15,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import ValidationError
 
 from research_summarizer.models import CritiqueResult, StepResult, SummaryResult
-
-_CRITIQUE_PROMPT = """You are a research quality critic. Evaluate the draft summary against the evidence below.
-
-Score each dimension from 0.0 to 1.0:
-
-1. source_fidelity: Does the summary accurately reflect what the evidence says? Penalize exaggeration or unsupported claims.
-2. source_diversity: Did the summary draw from multiple distinct sources? Penalize over-reliance on one source.
-3. caveat_specificity: Are caveats specific about what's missing or uncertain? Penalize generic "may be incomplete" without explanation.
-4. completeness: Does the summary address the user's request fully? Penalize missing key subtopics the evidence covers.
-
-Also list concrete gaps (what's missing or underdeveloped).
-
-Set should_revise = true if overall_score < 0.8 or any major gap exists.
-
-Return ONLY this JSON:
-{
-  "source_fidelity": 0.85,
-  "source_diversity": 0.70,
-  "caveat_specificity": 0.60,
-  "completeness": 0.90,
-  "overall_score": 0.76,
-  "gaps": ["Missing comparison between 2024 and 2026 data", "No mention of regional differences"],
-  "should_revise": true
-}
-
-Be strict but fair. A summary with good sourcing but weak caveats should score lower on caveat_specificity.
-"""
+from research_summarizer.prompts import CRITIQUE_SYSTEM_PROMPT
 
 
 def _extract_json(text: str) -> str:
@@ -81,7 +55,7 @@ def critique_output(
     summary_json = summary.model_dump_json()
 
     messages = [
-        SystemMessage(content=_CRITIQUE_PROMPT),
+        SystemMessage(content=CRITIQUE_SYSTEM_PROMPT),
         HumanMessage(content=f"Summary:\n{summary_json}\n\nEvidence:\n{evidence_text}"),
     ]
     response = model.invoke(messages)

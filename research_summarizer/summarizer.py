@@ -6,24 +6,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
 from research_summarizer.models import StepResult
-
-_SUMMARIZE_PROMPT = """You are a Research Summarizer Agent. Write a final summary from the evidence below.
-
-Your job is to help users understand a topic from source material.
-
-Workflow:
-1. Compare sources instead of trusting the first result.
-2. Separate facts from uncertainty.
-3. Prefer concise summaries with citations.
-
-Output format:
-- Summary: 4-7 bullets
-- Key details: facts, dates, names, numbers, and tradeoffs
-- Sources: list source titles or URLs used
-- Caveats: what may be missing, outdated, or uncertain
-
-Do not invent citations. If sources are weak or unavailable, say so.
-If a piece of evidence starts with [FETCH_ERROR], treat that source as unavailable — do not cite it or use its content."""
+from research_summarizer.prompts import SUMMARIZE_SYSTEM_PROMPT
 
 
 def summarize_evidence(request: str, evidence: list[StepResult], model: ChatOpenAI) -> str:
@@ -43,7 +26,7 @@ def summarize_evidence(request: str, evidence: list[StepResult], model: ChatOpen
     )
 
     messages = [
-        SystemMessage(content=_SUMMARIZE_PROMPT),
+        SystemMessage(content=SUMMARIZE_SYSTEM_PROMPT),
         HumanMessage(content=f"Request: {request}\n\nEvidence:\n{evidence_text}"),
     ]
     response = model.invoke(messages)

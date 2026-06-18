@@ -13,26 +13,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import ValidationError
 
 from research_summarizer.models import ResearchPlan, ResearchStep
-
-_PLAN_SYSTEM_PROMPT = """You are a research planner. Given a research request, produce a JSON plan with the steps needed to answer it.
-
-Rules:
-- If the request is a URL, plan: fetch that URL.
-- If the request is a local file path (ends in .md, .txt, or looks like a path), plan: read that file.
-- If the request is a topic/question, plan: 1-3 search queries, then fetch the most relevant results.
-- Each step has: action ("search", "fetch", or "read_file"), input (the query/URL/path), and purpose (why this step).
-- comparison_strategy: how you'll compare sources (e.g., "cross-check facts across 3 sources").
-
-Return ONLY this JSON:
-{
-  "steps": [
-    {"action": "search", "input": "search query", "purpose": "find recent articles"},
-    {"action": "fetch", "input": "https://...", "purpose": "get full text"}
-  ],
-  "comparison_strategy": "cross-check key claims across sources"
-}
-
-Keep queries specific and actionable. For topic requests, use 1-3 search queries — don't pre-fetch URLs you don't know exist."""
+from research_summarizer.prompts import PLAN_SYSTEM_PROMPT
 
 
 def _extract_json(text: str) -> str:
@@ -65,7 +46,7 @@ def plan_research(request: str, model: ChatOpenAI) -> ResearchPlan:
         ValueError: If the LLM response cannot be parsed into a valid plan.
     """
     messages = [
-        SystemMessage(content=_PLAN_SYSTEM_PROMPT),
+        SystemMessage(content=PLAN_SYSTEM_PROMPT),
         HumanMessage(content=request),
     ]
     response = model.invoke(messages)
