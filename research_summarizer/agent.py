@@ -18,37 +18,20 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from openai import APIError
+# Ensure environment variables from .env are loaded before importing tracing utilities.
+load_dotenv()
+
+from langsmith import traceable
 
 from research_summarizer.critique import critique_output, revise_output
 from research_summarizer.executor import execute_step
 from research_summarizer.models import RunState, StepResult, SummaryResult
 from research_summarizer.parser import ParseError, parse_summary_with_retry
 from research_summarizer.planner import plan_research
+from research_summarizer.prompts import RESEARCH_AGENT_SYSTEM_PROMPT
 from research_summarizer.replanner import replan_step
 from research_summarizer.summarizer import summarize_evidence
 from research_summarizer.validation import validate_summary
-
-
-SYSTEM_PROMPT = """You are a Research Summarizer Agent.
-
-Your job is to help users understand a topic from source material.
-
-Workflow:
-1. If the user gives URLs, fetch them before summarizing.
-2. If the user gives a broad topic, search the web, then fetch the most relevant pages.
-3. Compare sources instead of trusting the first result.
-4. Separate facts from uncertainty.
-5. Prefer concise summaries with citations.
-
-Output format:
-- Summary: 4-7 bullets
-- Key details: facts, dates, names, numbers, and tradeoffs
-- Sources: list source titles or URLs used
-- Caveats: what may be missing, outdated, or uncertain
-
-Do not invent citations. If sources are weak or unavailable, say so.
-- If a fetch returns `[FETCH_ERROR]`, treat that source as unavailable. Do not cite it or use its content.
-"""
 
 # Per-run fetch cache — cleared at the start of each run_agent() call.
 _fetch_cache: dict[str, str] = {}
@@ -62,7 +45,7 @@ TRACKING_PARAMS = frozenset({
 
 
 def _now() -> datetime:
-    return datetime.now(ZoneInfo("America/Los_Angeles"))
+    return datetime.now(ZoneInfo("China/Shanghai"))
 
 
 def _normalize_url(url: str) -> str:
@@ -207,29 +190,29 @@ def get_tools() -> list:
     return list(_TOOL_REGISTRY)
 
 
-def _build_model(temperature: float = 0.0, timeout: int = 120) -> ChatOpenAI:
+def _build_model(timeout: int = 120) -> ChatOpenAI:
     load_dotenv()
 
     api_key = os.getenv("OPENAI_API_KEY")
     base_url = os.getenv("OPENAI_BASE_URL")
-    model_name = os.getenv("OPENAI_MODEL")
+    model = os.getenv("OPENAI_MODEL")
 
-    if not all([api_key, base_url, model_name]):
+    if not all([api_key, base_url, model]):
         raise ValueError(
             "Missing API configuration. Set OPENAI_API_KEY, OPENAI_BASE_URL, and OPENAI_MODEL in your environment variables."
         )
 
-    model_options = {}
-    if "api.deepseek.com" in base_url and model_name.startswith("deepseek-v4"):
-        model_options["extra_body"] = {"thinking": {"type": "disabled"}}
-
     return ChatOpenAI(
         api_key=api_key,
         base_url=base_url,
-        model=model_name,
-        temperature=temperature,
+        model=model,
+        # temperature=temperature,
         timeout=timeout,
-        **model_options,
+        extra_body={
+            "thinking": {
+                "type": "disabled", 
+            }
+        }
     )
 
 
@@ -245,7 +228,7 @@ def build_agent(tools=None):
     return create_agent(
         model=_build_model(),
         tools=tools,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=RESEARCH_AGENT_SYSTEM_PROMPT,
         name="research_summarizer",
     )
 
@@ -253,6 +236,8 @@ def build_agent(tools=None):
 # Progress callback type: callable taking (stage, message)
 # Stages: plan, execute, replan, summarize, parse, validate, critique, repair, done
 ProgressCallback = Callable[[str, str], None]
+
+@traceable(run_type="chain", name="run_agent")
 def run_agent(request: str, tools=None, on_progress: ProgressCallback | None = None) -> SummaryResult:
     _fetch_cache.clear()
     model = _build_model()
