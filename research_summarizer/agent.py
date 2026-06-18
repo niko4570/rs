@@ -1,6 +1,7 @@
 """LangChain agent for researching and summarizing topics."""
 
 from __future__ import annotations
+from typing import Callable
 
 import os
 import re
@@ -17,31 +18,20 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
 from openai import APIError
+# Ensure environment variables from .env are loaded before importing tracing utilities.
+load_dotenv()
 
-from research_summarizer.models import SummaryResult
-from research_summarizer.parser import ParseError, parse_summary
+from langsmith import traceable
 
-
-SYSTEM_PROMPT = """You are a Research Summarizer Agent.
-
-Your job is to help users understand a topic from source material.
-
-Workflow:
-1. If the user gives URLs, fetch them before summarizing.
-2. If the user gives a broad topic, search the web, then fetch the most relevant pages.
-3. Compare sources instead of trusting the first result.
-4. Separate facts from uncertainty.
-5. Prefer concise summaries with citations.
-
-Output format:
-- Summary: 4-7 bullets
-- Key details: facts, dates, names, numbers, and tradeoffs
-- Sources: list source titles or URLs used
-- Caveats: what may be missing, outdated, or uncertain
-
-Do not invent citations. If sources are weak or unavailable, say so.
-- If a fetch returns `[FETCH_ERROR]`, treat that source as unavailable. Do not cite it or use its content.
-"""
+from research_summarizer.critique import critique_output, revise_output
+from research_summarizer.executor import execute_step
+from research_summarizer.models import RunState, StepResult, SummaryResult
+from research_summarizer.parser import ParseError, parse_summary_with_retry
+from research_summarizer.planner import plan_research
+from research_summarizer.prompts import RESEARCH_AGENT_SYSTEM_PROMPT
+from research_summarizer.replanner import replan_step
+from research_summarizer.summarizer import summarize_evidence
+from research_summarizer.validation import validate_summary
 
 # Per-run fetch cache — cleared at the start of each run_agent() call.
 _fetch_cache: dict[str, str] = {}
@@ -55,7 +45,7 @@ TRACKING_PARAMS = frozenset({
 
 
 def _now() -> datetime:
-    return datetime.now(ZoneInfo("America/Los_Angeles"))
+    return datetime.now(ZoneInfo("China/Shanghai"))
 
 
 def _normalize_url(url: str) -> str:
@@ -200,29 +190,29 @@ def get_tools() -> list:
     return list(_TOOL_REGISTRY)
 
 
-def _build_model(temperature: float = 0.0, timeout: int = 120) -> ChatOpenAI:
+def _build_model(timeout: int = 120) -> ChatOpenAI:
     load_dotenv()
 
     api_key = os.getenv("OPENAI_API_KEY")
     base_url = os.getenv("OPENAI_BASE_URL")
-    model_name = os.getenv("OPENAI_MODEL")
+    model = os.getenv("OPENAI_MODEL")
 
-    if not all([api_key, base_url, model_name]):
+    if not all([api_key, base_url, model]):
         raise ValueError(
             "Missing API configuration. Set OPENAI_API_KEY, OPENAI_BASE_URL, and OPENAI_MODEL in your environment variables."
         )
 
-    model_options = {}
-    if "api.deepseek.com" in base_url and model_name.startswith("deepseek-v4"):
-        model_options["extra_body"] = {"thinking": {"type": "disabled"}}
-
     return ChatOpenAI(
         api_key=api_key,
         base_url=base_url,
-        model=model_name,
-        temperature=temperature,
+        model=model,
+        # temperature=temperature,
         timeout=timeout,
-        **model_options,
+        extra_body={
+            "thinking": {
+                "type": "disabled", 
+            }
+        }
     )
 
 
@@ -238,49 +228,116 @@ def build_agent(tools=None):
     return create_agent(
         model=_build_model(),
         tools=tools,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=RESEARCH_AGENT_SYSTEM_PROMPT,
         name="research_summarizer",
     )
 
 
-def _run_agent_raw(request: str, tools=None) -> str:
-    """Run the agent loop and return raw text output.
+# Progress callback type: callable taking (stage, message)
+# Stages: plan, execute, replan, summarize, parse, validate, critique, repair, done
+ProgressCallback = Callable[[str, str], None]
 
-    Internal helper. External callers should use run_agent() for structured output.
-    """
+@traceable(run_type="chain", name="run_agent")
+def run_agent(request: str, tools=None, on_progress: ProgressCallback | None = None) -> SummaryResult:
     _fetch_cache.clear()
-    agent = build_agent(tools=tools)
-    try:
-        result = agent.invoke(
-            {"messages": [{"role": "user", "content": request}]},
-            config={"recursion_limit": 25},
-        )
-    except APIError as e:
-        raise APIError(
-            "Model API call failed. Check your API key, account balance, model name, "
-            f"and base URL. Provider error: {e}"
-        ) from e
-    final_message = result["messages"][-1]
-    return getattr(final_message, "content", str(final_message))
-
-
-def run_agent(request: str, tools=None) -> SummaryResult:
-    """Run the agent and return a typed SummaryResult.
-
-    Runs the agent loop, then parses the final answer through the
-    structured output parser for validation.
-
-    Args:
-        request: The user's research query or URL.
-        tools: Optional tool list override.
-
-    Returns:
-        A validated SummaryResult.
-
-    Raises:
-        ParseError: If the final answer cannot be parsed or validated.
-        openai.APIError: If the model API call fails.
-    """
-    raw_answer = _run_agent_raw(request, tools=tools)
     model = _build_model()
-    return parse_summary(raw_answer, model)
+    state = RunState()
+    max_replans = 3
+    replan_count = 0
+    best_score = 0.0
+    max_critique_attempts = 2
+
+    # 1. PLAN
+    _progress(on_progress, "plan", f"Planning research for: {request}")
+    plan = plan_research(request, model)
+    if not plan.steps:
+        raise ValueError("Plan produced no steps.")
+    _progress(on_progress, "plan", f"Plan ready: {len(plan.steps)} step(s)")
+
+    # 2. EXECUTE
+    evidence: list[StepResult] = []
+    for step in plan.steps:
+        _progress(on_progress, "execute", f"{step.action}: {step.input}")
+        result = execute_step(step, state)
+        evidence.append(result)
+
+        if result.failed and result.retryable:
+            _progress(on_progress, "replan", f"{step.action} failed ({result.error_type}), replanning...")
+            replacement = replan_step(
+                step, result, plan, state, model,
+                replan_count=replan_count, max_replans=max_replans,
+            )
+            if replacement:
+                replan_count += 1
+                _progress(on_progress, "replan", f"Trying alternative: {replacement.action} {replacement.input}")
+                replan_result = execute_step(replacement, state)
+                evidence.append(replan_result)
+            else:
+                _progress(on_progress, "replan", "No viable alternative found")
+
+    # 3. SUMMARIZE
+    _progress(on_progress, "summarize", f"Summarizing {len(evidence)} evidence item(s)...")
+    draft_text = summarize_evidence(request, evidence, model)
+
+    # 4. PARSE
+    _progress(on_progress, "parse", "Parsing structured output...")
+    summary = parse_summary_with_retry(draft_text, model)
+
+    # 5. VALIDATE
+    _progress(on_progress, "validate", "Validating summary...")
+    report = validate_summary(summary, state)
+    if not report.passed:
+        _progress(on_progress, "repair", f"Validation failed ({len(report.issues)} issue(s)), repairing...")
+        issue_text = "\n".join(
+            f"- [{i.code}] {i.message}" for i in report.issues
+        )
+        repair_request = (
+            f"Your summary had validation issues. Fix them.\n\n"
+            f"Issues:\n{issue_text}\n\n"
+            f"Original request: {request}\n\n"
+            f"Original summary draft:\n{draft_text}"
+        )
+        revised_text = summarize_evidence(repair_request, evidence, model)
+        summary = parse_summary_with_retry(revised_text, model)
+        _progress(on_progress, "repair", "Validation repair complete")
+
+    # 6. CRITIQUE (Phase 3)
+    _progress(on_progress, "critique", "Critiquing summary quality...")
+    critique = critique_output(summary, evidence, model)
+    _progress(
+        on_progress, "critique",
+        f"Score: {critique.overall_score:.2f} "
+        f"(fidelity={critique.source_fidelity:.2f}, "
+        f"diversity={critique.source_diversity:.2f}, "
+        f"caveats={critique.caveat_specificity:.2f}, "
+        f"completeness={critique.completeness:.2f})"
+    )
+
+    # 7. REVISE (bounded loop, max 2 attempts)
+    for attempt in range(max_critique_attempts):
+        if not critique.should_revise or critique.overall_score >= 0.8:
+            break
+        if critique.overall_score <= best_score:
+            _progress(on_progress, "critique", f"Score not improving ({critique.overall_score:.2f} <= {best_score:.2f}), stopping")
+            break
+
+        best_score = critique.overall_score
+        _progress(on_progress, "critique", f"Revision attempt {attempt + 1}/2...")
+
+        revised_draft = revise_output(summary, critique, evidence, model)
+        summary = parse_summary_with_retry(revised_draft, model)
+
+        critique = critique_output(summary, evidence, model)
+        _progress(
+            on_progress, "critique",
+            f"Post-revision score: {critique.overall_score:.2f}"
+        )
+
+    _progress(on_progress, "done", f"Done. Final score: {critique.overall_score:.2f}")
+    return summary
+
+
+def _progress(cb: ProgressCallback | None, stage: str, message: str) -> None:
+    """Invoke progress callback if provided."""
+    if cb is not None:
+        cb(stage, message)

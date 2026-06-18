@@ -18,25 +18,9 @@ from langchain_openai import ChatOpenAI
 from pydantic import ValidationError
 
 from research_summarizer.models import SummaryResult
+from research_summarizer.prompts import PARSE_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
-
-_PARSE_SYSTEM_PROMPT = """Convert the following research summary into a JSON object matching this schema:
-
-{
-  "summary_bullets": ["bullet 1", "bullet 2", ...],  // 4-7 bullets
-  "key_details": "facts, dates, names, numbers, tradeoffs",
-  "sources": [
-    {"title": "Page Title", "url": "https://...", "snippet_used": "optional specific text"}
-  ],
-  "caveats": ["specific caveat 1", "specific caveat 2"]
-}
-
-Rules:
-- summary_bullets must have exactly 4-7 items.
-- sources must only include sources that were actually used in the summary.
-- caveats must be specific, not generic phrases like "may be incomplete."
-- Return ONLY the JSON object, no other text."""
 
 
 class ParseError(Exception):
@@ -85,7 +69,7 @@ def parse_summary(raw_answer: str, model: ChatOpenAI) -> SummaryResult:
         ParseError: If parsing or validation fails.
     """
     messages = [
-        SystemMessage(content=_PARSE_SYSTEM_PROMPT),
+        SystemMessage(content=PARSE_SYSTEM_PROMPT),
         HumanMessage(content=raw_answer),
     ]
 
