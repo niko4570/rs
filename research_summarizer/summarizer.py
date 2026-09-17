@@ -1,33 +1,25 @@
-"""Summarizer that produces a final summary from collected evidence."""
+"""Synthesis layer: turns collected evidence into a structured SummaryResult."""
 
 from __future__ import annotations
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from research_summarizer.models import StepResult
+from research_summarizer.models import SummaryResult
+from research_summarizer.parser import parse_summary
 from research_summarizer.prompts import SUMMARIZE_SYSTEM_PROMPT
 
 
-def summarize_evidence(request: str, evidence: list[StepResult], model: ChatOpenAI) -> str:
-    """Produce a final summary from collected evidence.
+def summarize_evidence(request: str, evidence: str, model: ChatOpenAI) -> SummaryResult:
+    """Produce a structured summary from collected evidence in a single LLM call.
 
-    Args:
-        request: The original user request.
-        evidence: Results from executed research steps.
-        model: A ChatOpenAI instance.
-
-    Returns:
-        Raw summary text (to be fed to the parser).
+    The model is instructed to return JSON directly; the parser only extracts
+    and validates it (no second LLM call).
     """
-    evidence_text = "\n\n---\n\n".join(
-        f"Source ({r.step.action}: {r.step.input}):\n{r.content}"
-        for r in evidence
-    )
-
     messages = [
         SystemMessage(content=SUMMARIZE_SYSTEM_PROMPT),
-        HumanMessage(content=f"Request: {request}\n\nEvidence:\n{evidence_text}"),
+        HumanMessage(content=f"Request: {request}\n\nEvidence:\n{evidence}"),
     ]
     response = model.invoke(messages)
-    return getattr(response, "content", str(response))
+    raw_answer = getattr(response, "content", str(response))
+    return parse_summary(raw_answer)

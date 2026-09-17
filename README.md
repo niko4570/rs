@@ -1,6 +1,6 @@
 # Research Summarizer Agent
 
-A beginner-friendly LangChain research summarizer agent that accepts a topic, URL, or local text file path and returns a summary with key details, sources, and caveats.
+A minimal, local-only research summarizer that accepts a topic, URL, or local text file and returns a structured summary with key details, sources, and caveats.
 
 ## Features
 
@@ -9,6 +9,22 @@ A beginner-friendly LangChain research summarizer agent that accepts a topic, UR
 - **Local File Reading**: Processes local `.txt` or `.md` files
 - **LangSmith Tracing**: Ready for tracing and debugging with LangSmith
 - **Multiple LLM Support**: Compatible with OpenAI and DeepSeek models
+
+## How it works
+
+The workflow is intentionally minimal:
+
+```text
+request ──► dispatch ──► one tool ──► one LLM call ──► SummaryResult
+              │            │              │
+              │            │              └─ synthesize JSON (summary, key details,
+              │            │                 sources, caveats)
+              │            └─ URL → fetch, .txt/.md file → read_file,
+              │               anything else → search (SerpApi)
+              └─ deterministic, no LLM planning
+```
+
+Each request makes exactly one LLM call.
 
 ## Installation
 
@@ -80,10 +96,9 @@ If no argument is provided, you'll be prompted to enter a research request.
 
 ## Known Issues
 
-- Web research can be slow (5-6 minutes for complex queries)
-- No progress feedback during long-running tasks
-- May fetch broad index pages instead of specific articles
-- Failed URL fetches are not properly handled
+- Topic research runs a single web search (no multi-source cross-checking)
+- Failed URL fetches and search errors are passed to the LLM as evidence, so
+  they are reflected in the summary rather than retried
 - No explicit runtime limits
 - DeepSeek v4 models require disabling thinking mode
 
@@ -92,7 +107,9 @@ If no argument is provided, you'll be prompted to enter a research request.
 This project uses:
 
 - Python 3.11+
-- LangChain for agent framework
+- `langchain-openai` for LLM access (no LangChain agent framework)
+- Pydantic for structured output
+- FastAPI + Uvicorn for the local API
 - Ruff for linting
 
 ## License
@@ -176,8 +193,7 @@ CORS is enabled for the local Vite dev origin (`http://localhost:5173`).
 ## Normal Development Workflow
 
 1. Start with one clear job: research and summarize source material.
-2. Add the smallest useful tools: search, fetch URL, read file.
-3. Use LangChain for the agent loop.
+2. Keep the smallest useful tools: search, fetch URL, read file.
+3. Dispatch deterministically: URL → fetch, file → read, topic → search.
 4. Use LangSmith tracing while testing.
 5. Save 5-10 test prompts and check whether the answer is accurate, cited, and concise.
-6. Move to LangGraph later if you need a stricter multi-step workflow.
