@@ -5,10 +5,8 @@ from typing import Callable
 
 import os
 import re
-from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
-from zoneinfo import ZoneInfo
 
 import requests
 import serpapi
@@ -44,10 +42,6 @@ TRACKING_PARAMS = frozenset({
 })
 
 
-def _now() -> datetime:
-    return datetime.now(ZoneInfo("China/Shanghai"))
-
-
 def _normalize_url(url: str) -> str:
     """Strip tracking query parameters so near-duplicate URLs share a cache key."""
     parsed = urlparse(url)
@@ -63,22 +57,7 @@ def _clean_text(text: str, max_chars: int = 6000) -> str:
 
 @tool
 def search_web(query: str) -> str:
-    """Search the public web for a research query and return result titles, URLs, and snippets.
-    Stale years in freshness-oriented queries are silently corrected."""
-    freshness_query = re.search(
-        r"\b(latest|recent|today|current|now|news|updates?|this\s+(?:week|month|year))\b",
-        query,
-        flags=re.IGNORECASE,
-    )
-    if freshness_query:
-        current_year = _now().year
-        stale_years = {str(year) for year in range(current_year - 3, current_year)}
-        query = re.sub(
-            r"\b20\d{2}\b",
-            lambda match: str(current_year) if match.group(0) in stale_years else match.group(0),
-            query,
-        )
-
+    """Search the public web for a research query and return result titles, URLs, and snippets."""
     load_dotenv()
     api_key = os.getenv("SERPAPI_API_KEY")
     if not api_key:

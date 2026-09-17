@@ -1,10 +1,8 @@
 """Unit tests for research summarizer tools — pytest edition."""
 
 import tempfile
-from datetime import datetime
 from pathlib import Path
 from unittest.mock import Mock, patch
-from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -75,27 +73,14 @@ def test_parses_results(mock_serpapi_key, mocker):
     )
 
 
-def test_corrects_stale_year_in_freshness_query(mock_serpapi_key, mocker):
-    mock_now = mocker.patch("research_summarizer.agent._now")
-    mock_now.return_value = datetime(2026, 5, 24, tzinfo=ZoneInfo("America/Los_Angeles"))
+def test_passes_freshness_query_through_unchanged(mock_serpapi_key, mocker):
     mock_client_class = mocker.patch("research_summarizer.agent.serpapi.Client")
     mock_client_class.return_value.search.return_value = {"organic_results": []}
 
     search_web.invoke({"query": "Trump visit China 2025 latest news"})
 
     mock_client_class.return_value.search.assert_called_once_with(
-        {"engine": "google", "q": "Trump visit China 2026 latest news", "num": 5, "hl": "en"}
-    )
-
-
-def test_preserves_historical_year(mock_serpapi_key, mocker):
-    mock_client_class = mocker.patch("research_summarizer.agent.serpapi.Client")
-    mock_client_class.return_value.search.return_value = {"organic_results": []}
-
-    search_web.invoke({"query": "Trump China policy 2020 analysis"})
-
-    mock_client_class.return_value.search.assert_called_once_with(
-        {"engine": "google", "q": "Trump China policy 2020 analysis", "num": 5, "hl": "en"}
+        {"engine": "google", "q": "Trump visit China 2025 latest news", "num": 5, "hl": "en"}
     )
 
 
