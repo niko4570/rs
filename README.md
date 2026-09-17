@@ -137,6 +137,42 @@ Or a local file:
 python -m research_summarizer.cli "Summarize README.md"
 ```
 
+## Local Web API
+
+A minimal FastAPI layer exposes the same agent core over HTTP:
+
+```bash
+pip install -e .
+uvicorn research_summarizer.api:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Endpoints:
+
+```text
+GET  /api/health
+POST /api/research   (multipart/form-data)
+```
+
+`POST /api/research` accepts either:
+
+- `input_type=url` with a `url` field (http/https)
+- `input_type=file` with a `file` upload (`.txt` or `.md`)
+
+Uploaded files are written to `.uploads/` (gitignored) and read by the
+agent's existing local-file tool. The response is the structured
+`SummaryResult` shape:
+
+```json
+{
+  "summary_bullets": ["..."],
+  "key_details": "...",
+  "sources": [{"title": "...", "url": "...", "snippet_used": null}],
+  "caveats": ["..."]
+}
+```
+
+CORS is enabled for the local Vite dev origin (`http://localhost:5173`).
+
 ## Normal Development Workflow
 
 1. Start with one clear job: research and summarize source material.
