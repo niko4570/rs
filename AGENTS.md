@@ -1,149 +1,364 @@
-# AGENTS.md — Research Summarizer Agent
+# AGENTS.md
 
 ## Project Overview
 
-A LangChain-based research summarizer agent that accepts a topic, URL, or local file path and returns a structured summary with sources, key details, and caveats.
+`rs` is a small, local-only research summarizer.
 
-- **Language:** Python 3.11+
-- **Framework:** LangChain (`create_agent`, not LangGraph)
-- **LLM:** OpenAI-compatible API (DeepSeek primary, also OpenAI)
-- **Search:** SerpApi (Google)
-- **Parsing:** trafilatura (HTML/text extraction), Python stdlib (local files)
-- **Tracing:** LangSmith (optional)
-- **Linting:** Ruff, line-length 100
-- **Testing:** `pytest` with `pytest-mock`
-- **Package manager:** pip (editable install: `pip install -e .`)
-- **CLI entry point:** `research-agent` (also `python -m research_summarizer.cli`)
+The project accepts one of three input types:
 
-## Architecture
+- A research topic / question
+- A URL
+- A local `.txt` / `.md` / `.markdown` file
 
-```
-research_summarizer/
-  __init__.py   — public exports: build_agent, run_agent
-  agent.py      — tools, model builder, agent factory, run loop
-  cli.py        — argparse entry point
-tests/
-  test_tools.py — pytest tests for search_web, fetch_url, read_text_file, _normalize_url
-```
+It acquires evidence, sends that evidence to an LLM for synthesis, and returns a structured `SummaryResult`.
 
-**Agent flow:** `cli.py` calls `run_agent(request)` → clears fetch cache → `build_agent()` creates a LangChain agent with 3 tools → `agent.invoke()` runs the agent loop (max 25 recursion steps) → returns final message content.
+The project is intentionally small. Do not introduce agentic orchestration unless there is a concrete requirement that cannot be solved more simply.
 
-**Three tools** registered on the agent:
+## Current Architecture
 
-1. `search_web(query)` — SerpApi Google search, auto-corrects stale years in freshness queries
-2. `fetch_url(url)` — HTTP GET + trafilatura text extraction, caches per-run with URL normalization
-3. `read_text_file(path)` — reads local .txt/.md files, refuses paths outside project root
+The core workflow is:
 
-## Development Workflow
-
-### Setup
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
+```text
+User Request
+    ↓
+Deterministic Dispatch
+    ├── URL → Fetch Web Page
+    ├── Local File → Read File
+    └── Topic → Tavily Search
+                    ↓
+                 Evidence
+                    ↓
+              One LLM Call
+                    ↓
+              Parse JSON
+                    ↓
+             SummaryResult
 ```
 
-Copy `.env.example` to `.env` and fill in:
+The important architectural principle is:
 
-- `OPENAI_API_KEY` + `OPENAI_BASE_URL` + `OPENAI_MODEL` (required)
-- `SERPAPI_API_KEY` (required for web search)
-- LangSmith vars (optional)
+> Tools acquire evidence. The LLM synthesizes evidence.
 
-### Git workflow
+The application is not intended to autonomously plan, re-plan, execute multi-step tasks, or maintain an agent loop.
 
-- **Always branch before changes.** Never commit directly to `main`.
-- Repo: `https://github.com/niko4570/rs`
-- Branch naming: descriptive, kebab-case (e.g. `fix-fetch-caching`, `add-tool-timeout`)
+## Core Components
 
-### Running
+### `research_summarizer/agent.py`
 
-```bash
-# CLI
-research-agent "Summarize the latest AI news"
-research-agent "https://example.com/article"
-research-agent "README.md"
+Contains the main research workflow and deterministic input dispatch.
 
-# Or as module
-python -m research_summarizer.cli "query"
+Responsibilities include:
+
+- Resolving the input type
+- Calling the appropriate evidence-acquisition function
+- Fetching URLs
+- Reading local text files
+- Searching topics with Tavily
+- Constructing evidence for the LLM
+- Calling the LLM exactly once
+- Passing the result to the parser
+
+Keep the workflow explicit and easy to follow.
+
+Do not turn this module into a general-purpose autonomous agent framework.
+
+### `research_summarizer/summarizer.py`
+
+Contains the LLM summarization layer.
+
+Responsibilities:
+
+- Receiving prepared evidence
+- Calling the configured LLM
+- Returning the raw model output
+
+The summarizer should not perform web searches, file access, planning, or validation loops.
+
+### `research_summarizer/parser.py`
+
+Contains deterministic parsing and validation of the LLM response.
+
+Responsibilities:
+
+- Extracting the JSON object from model output
+- Validating the result with Pydantic
+- Raising a parsing/validation error when the response is invalid
+
+Do not add another LLM call for repairing malformed output.
+
+### `research_summarizer/models.py`
+
+Contains Pydantic models used by the application.
+
+The primary output model is `SummaryResult`.
+
+Keep data models separate from workflow logic.
+
+### `research_summarizer/prompts.py`
+
+Contains prompts used by the summarization layer.
+
+The prompt should make the LLM:
+
+- Use only supplied evidence
+- Avoid unsupported claims
+- Distinguish strong evidence from weak evidence
+- Report uncertainty or conflicting information
+- Return the required JSON structure
+- Include only sources actually present in the evidence
+
+The prompt should not be used to implement application control flow that can be handled deterministically in Python.
+
+### `research_summarizer/api.py`
+
+FastAPI adapter for the local web application.
+
+The API should remain a thin layer around the core research workflow.
+
+Current responsibilities:
+
+- `/api/health`
+- `/api/research`
+- Input validation
+- Local text-file upload handling
+- Calling the research workflow
+- Returning `SummaryResult`
+- Mapping expected errors to HTTP responses
+- Local development CORS configuration
+
+Do not move research logic into the API layer.
+
+### `research_summarizer/cli.py`
+
+CLI interface for running research locally.
+
+The CLI should call the same research core used by the API.
+
+Do not duplicate research logic inside the CLI.
+
+## Research Acquisition
+
+Topic research uses Tavily.
+
+Tavily is an evidence-acquisition tool, not an autonomous agent.
+
+The integration should provide useful research evidence to the synthesis layer.
+
+When implementing Tavily:
+
+1. Keep the integration deterministic.
+2. Preserve useful source metadata such as title and URL.
+3. Prefer substantive result content over search-result snippets when Tavily provides it.
+4. Do not invent source content.
+5. Do not add an independent planning/re-planning stage.
+6. Do not add multiple LLM calls merely to improve search queries.
+7. Do not introduce a separate time service or runtime date mechanism.
+
+The goal is not merely to replace the SerpApi API call.
+
+The goal is to improve the quality of evidence supplied to the summarizer.
+
+## LLM Call Policy
+
+The normal research workflow should make exactly one LLM call.
+
+```text
+Evidence → LLM → Structured Result
 ```
 
-### Testing
+Do not add:
 
-```bash
-pytest
-# or single file
-pytest tests/test_tools.py
+- Planner calls
+- Replanner calls
+- Critic calls
+- Repair calls
+- Reflection loops
+- Automatic retry-by-generation loops
+
+unless a concrete product requirement demonstrates that the one-call design is insufficient.
+
+Retries caused by transient API/network failures are different from additional reasoning stages and may be implemented when appropriate.
+
+## No Autonomous Agent Loop
+
+This project deliberately does NOT use:
+
+- Planner
+- Replanner
+- LangGraph workflow orchestration
+- `create_agent`
+- autonomous tool loops
+- recursive agent execution
+- multi-stage agent state machines
+
+Do not reintroduce these patterns without an explicit requirement.
+
+The project should remain understandable by reading the main workflow from top to bottom.
+
+## Time Handling
+
+Do not add application-level time-awareness merely to make the model understand the current date.
+
+Do not introduce:
+
+- time MCP servers
+- time APIs
+- timezone services
+- runtime date injection
+- automatic query rewriting based on the current year
+
+The LLM already receives normal user language and can interpret ordinary temporal expressions.
+
+If a future feature has a genuine requirement for date-sensitive research, implement that requirement explicitly rather than adding a general-purpose time system.
+
+## Error Handling
+
+Errors should be handled at the appropriate layer.
+
+Expected categories include:
+
+- Invalid input
+- Unsupported file type
+- Invalid URL
+- File reading errors
+- Network errors
+- Tavily API errors
+- LLM API errors
+- Invalid model output
+- Pydantic validation errors
+
+Do not hide failures by fabricating fallback research or summary content.
+
+If evidence is insufficient, the final result should say so through `caveats`.
+
+## Security
+
+This is a local application, but basic input boundaries still matter.
+
+Preserve the existing protections around:
+
+- HTTP/HTTPS URL validation
+- Local file type restrictions
+- Upload size limits
+- UTF-8 validation
+- Local upload handling
+- Path boundaries for local files
+
+Do not weaken these protections for convenience.
+
+When changing file or URL handling, test path traversal, unsupported schemes, and invalid input.
+
+## Dependencies
+
+Prefer the smallest dependency set that solves the problem.
+
+Current stack:
+
+- Python 3.11+
+- FastAPI
+- Uvicorn
+- Pydantic
+- `langchain-openai` for LLM access
+- Tavily for web research
+- Ruff for linting/formatting
+
+`langchain-openai` is used as an LLM client integration.
+
+Do not introduce the LangChain agent framework simply because `langchain-openai` is already installed.
+
+Avoid adding frameworks when a small Python function is sufficient.
+
+## Development Principles
+
+When modifying this repository:
+
+1. Read the existing implementation before changing it.
+2. Preserve the current architecture unless the requested feature requires a structural change.
+3. Prefer deterministic Python logic over agentic orchestration.
+4. Prefer one clear data flow over abstractions that hide control flow.
+5. Keep modules focused, but do not split files merely for the sake of having more files.
+6. Do not add speculative features.
+7. Do not add infrastructure that the local MVP does not need.
+8. Make the smallest change that satisfies the requirement.
+9. Update tests when behavior changes.
+10. Update this file if the architecture materially changes.
+
+## Things We Are Explicitly Not Building
+
+Unless explicitly requested, do not add:
+
+- Database
+- Redis
+- Celery
+- RabbitMQ
+- Background job infrastructure
+- WebSockets
+- SSE
+- MCP servers
+- Authentication
+- User accounts
+- Multi-user SaaS infrastructure
+- Cloud deployment infrastructure
+- Agent memory
+- Vector database
+- RAG pipeline
+- Planner/Replanner
+- Multi-agent systems
+- Autonomous agent loops
+- Time-awareness services
+
+These may be useful in other products, but they are outside the scope of this project.
+
+## Testing
+
+Tests should focus on observable behavior.
+
+Important areas include:
+
+- Input dispatch
+- URL validation
+- Local file handling
+- Tavily evidence conversion
+- Evidence passed to the summarizer
+- LLM response parsing
+- Pydantic validation
+- API input/output behavior
+- Error handling
+
+Tests should not depend on real external APIs unless a test is explicitly designed as an integration test.
+
+Mock external services for deterministic unit tests.
+
+When changing research acquisition, test the shape and quality of the evidence passed to the LLM rather than only testing that an API function was called.
+
+## Definition of Done
+
+A change is not complete merely because the code runs.
+
+Before considering a feature complete:
+
+1. The implementation matches the current architecture.
+2. Existing tests still pass.
+3. New behavior has appropriate tests.
+4. No obsolete architecture remains in documentation.
+5. No unnecessary dependencies or infrastructure were introduced.
+6. External API failures are handled explicitly.
+7. The resulting evidence is actually useful to the summarization layer.
+
+For research-related changes, verify the complete flow:
+
+```text
+Input
+  ↓
+Evidence Acquisition
+  ↓
+Evidence
+  ↓
+One LLM Call
+  ↓
+Parsing
+  ↓
+SummaryResult
 ```
 
-Tests use `pytest` with `pytest-mock`. The test suite covers:
-
-- `search_web`: missing API key, result parsing, stale-year correction, historical year preservation, error reporting
-- `fetch_url`: page text extraction, cache hits (same URL + tracking-param variants), HTTP errors, network errors, errors-not-cached
-- `read_text_file`: reading project files, refusing out-of-project paths, relative path resolution
-- `_normalize_url`: UTM stripping, tracking param removal, preserving valid params, clean URLs
-- tool registry and agent construction: `get_tools()`, `_TOOL_REGISTRY`, `build_agent()` tool overrides
-
-### Linting
-
-```bash
-ruff check .
-```
-
-## Key Patterns & Design Decisions
-
-### Per-run fetch cache (`_fetch_cache`)
-
-A module-level `dict[str, str]` that lives for one `run_agent()` call. Cleared at the top of `run_agent()`. This is the **primary mechanism for preventing duplicate work** — it replaces multiple prompt-rule patches.
-
-- URL normalization strips tracking params (`utm_*`, `fbclid`, `r`, `ref`, etc.) so near-duplicate URLs share a cache key
-- Cache hits return `[CACHED — already fetched this page]` prefix — the model sees it already has the content
-- Failed fetches are **not cached** — prevents the model from "trusting" dead sources later
-- HTTP errors are surfaced as plain text (`FETCH ERROR` / `URL fetch failed`) so LangSmith shows them but the agent can continue
-
-### Stale-year correction in `search_web`
-
-For queries containing freshness words (`latest`, `recent`, `today`, `current`, `now`, `news`, `updates`, `this week/month/year`), `search_web` rewrites years that are 1-3 years stale to the current year. Historical queries (years >3 back or no freshness words) pass through unchanged.
-
-This moves the correction **into the tool** rather than depending on the model to call and remember a time tool — state in tools beats state in prompts.
-
-### DeepSeek v4 thinking mode
-
-DeepSeek v4 models require `thinking` disabled. The `_build_model()` function detects `api.deepseek.com` in the base URL + `deepseek-v4-*` model prefix and injects `extra_body={"thinking": {"type": "disabled"}}`. Other model/provider combinations pass through without this option.
-
-### Agent recursion limit
-
-Set to 25 (`config={"recursion_limit": 25}`). This is intentionally generous — the fetch cache should reduce redundant tool calls, not the recursion limit.
-
-### Error handling
-
-- `run_agent()` catches `openai.APIError` and returns a user-friendly diagnostic
-- Tool errors (`fetch_url` network/HTTP failures) return error text — the agent loop continues
-- `read_text_file` refuses paths outside the project root for safety
-
-## Common Pitfalls
-
-1. **Don't add prompt-level rules for things tools can handle.** The fetch cache, stale-year correction, and URL normalization all live in the tools. Prompt rules degrade under attention decay; tool behavior doesn't.
-
-2. **Don't append `after:<today>` to all searches.** It excludes legitimate pages and breaks normal research queries. Stale-year correction is targeted — only freshness queries get rewritten.
-
-3. **Don't add LangGraph unless the workflow requires strict multi-step orchestration.** The current `create_agent` loop with 3 tools is intentionally simple.
-
-4. **DeepSeek v4 models will 400 without `thinking: disabled`.** If you change the model, verify the `_build_model()` detection still works.
-
-5. **The agent runs open-loop within a single invocation.** There's no persistent memory across `run_agent()` calls. Each call gets a fresh cache and fresh agent instance.
-
-6. **Tests use `pytest`, not `unittest`.** The repository uses `pytest` with `pytest-mock` and prefers simple fixture usage.
-
-7. **The `.env` file is gitignored.** Never commit API keys. Use `.env.example` as a template.
-
-## Context Window & Attention Management
-
-The known failure mode: as context grows past 8-10 turns with full page texts, earlier tool results fall out of the model's attention window. The model then repeats fetches, chases index pages, and over-fetches.
-
-Mitigations in place:
-
-- Fetch cache eliminates duplicate HTTP calls
-- `[CACHED]` prefix tells the model it already has the content (shorter context than re-fetching)
-- `_clean_text()` caps fetch output at 8,000 chars and search snippets at 300 chars
-- LangSmith tracing is the observability layer — inspect traces there when the agent behaves unexpectedly
+The primary goal is a small, reliable research summarizer—not a general-purpose autonomous agent framework.
