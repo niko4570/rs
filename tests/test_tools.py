@@ -3,7 +3,7 @@
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from research_summarizer.agent import (
+from research_summarizer.evidence import (
     _normalize_url,
     fetch_url,
     read_text_file,
@@ -40,14 +40,14 @@ def test_resolves_relative_paths(temp_project_root):
 
 
 def test_search_web_requires_api_key(no_serpapi_key, mocker):
-    mock_load_dotenv = mocker.patch("research_summarizer.agent.load_dotenv")
+    mock_load_dotenv = mocker.patch("research_summarizer.evidence.load_dotenv")
     result = search_web("example story")
     assert "missing SERPAPI_API_KEY" in result
     mock_load_dotenv.assert_called_once()
 
 
 def test_parses_results(mock_serpapi_key, mocker):
-    mock_client_class = mocker.patch("research_summarizer.agent.serpapi.Client")
+    mock_client_class = mocker.patch("research_summarizer.evidence.serpapi.Client")
     mock_client = mock_client_class.return_value
     mock_client.search.return_value = {
         "organic_results": [
@@ -71,7 +71,7 @@ def test_parses_results(mock_serpapi_key, mocker):
 
 
 def test_passes_freshness_query_through_unchanged(mock_serpapi_key, mocker):
-    mock_client_class = mocker.patch("research_summarizer.agent.serpapi.Client")
+    mock_client_class = mocker.patch("research_summarizer.evidence.serpapi.Client")
     mock_client_class.return_value.search.return_value = {"organic_results": []}
 
     search_web("Trump visit China 2025 latest news")
@@ -82,7 +82,7 @@ def test_passes_freshness_query_through_unchanged(mock_serpapi_key, mocker):
 
 
 def test_reports_serpapi_error(mock_serpapi_key, mocker):
-    mock_client_class = mocker.patch("research_summarizer.agent.serpapi.Client")
+    mock_client_class = mocker.patch("research_summarizer.evidence.serpapi.Client")
     mock_client_class.return_value.search.return_value = {"error": "Invalid API key."}
 
     result = search_web("example story")
@@ -126,7 +126,7 @@ def test_clean_url_unchanged():
 
 
 def test_fetch_returns_page_text(mocker):
-    mock_get = mocker.patch("research_summarizer.agent.requests.get")
+    mock_get = mocker.patch("research_summarizer.evidence.requests.get")
     mock_response = Mock()
     mock_response.text = (
         "<html><head><title>Test Page</title></head>"
@@ -143,7 +143,7 @@ def test_fetch_returns_page_text(mocker):
 
 
 def test_fetch_caches_duplicate_url(mocker):
-    mock_get = mocker.patch("research_summarizer.agent.requests.get")
+    mock_get = mocker.patch("research_summarizer.evidence.requests.get")
     mock_response = Mock()
     mock_response.text = "<html><head><title>Page</title></head><body>Content</body></html>"
     mock_response.raise_for_status.return_value = None
@@ -158,7 +158,7 @@ def test_fetch_caches_duplicate_url(mocker):
 
 
 def test_fetch_caches_tracking_param_variant(mocker):
-    mock_get = mocker.patch("research_summarizer.agent.requests.get")
+    mock_get = mocker.patch("research_summarizer.evidence.requests.get")
     mock_response = Mock()
     mock_response.text = "<html><head><title>Page</title></head><body>Content</body></html>"
     mock_response.raise_for_status.return_value = None
@@ -174,7 +174,7 @@ def test_fetch_caches_tracking_param_variant(mocker):
 def test_fetch_http_error_returns_error_text(mocker):
     import requests as req
 
-    mock_get = mocker.patch("research_summarizer.agent.requests.get")
+    mock_get = mocker.patch("research_summarizer.evidence.requests.get")
     mock_response = Mock()
     mock_response.status_code = 403
     mock_response.raise_for_status.side_effect = req.HTTPError(
@@ -191,7 +191,7 @@ def test_fetch_http_error_returns_error_text(mocker):
 def test_fetch_network_error_returns_error_text(mocker):
     import requests as req
 
-    mock_get = mocker.patch("research_summarizer.agent.requests.get")
+    mock_get = mocker.patch("research_summarizer.evidence.requests.get")
     mock_get.side_effect = req.ConnectionError("Connection refused")
 
     result = fetch_url("https://down.example.com")
@@ -203,7 +203,7 @@ def test_fetch_network_error_returns_error_text(mocker):
 def test_fetch_http_error_not_cached(mocker):
     import requests as req
 
-    mock_get = mocker.patch("research_summarizer.agent.requests.get")
+    mock_get = mocker.patch("research_summarizer.evidence.requests.get")
     mock_response = Mock()
     mock_response.status_code = 403
     mock_response.raise_for_status.side_effect = req.HTTPError(

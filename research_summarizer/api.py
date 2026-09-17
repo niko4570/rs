@@ -15,7 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from openai import APIError
 from starlette.concurrency import run_in_threadpool
 
-from research_summarizer.agent import _PROJECT_ROOT, run_agent
+from research_summarizer.agent import run_agent
+from research_summarizer.evidence import _PROJECT_ROOT
 from research_summarizer.models import SummaryResult
 from research_summarizer.parser import ParseError
 

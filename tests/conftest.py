@@ -12,18 +12,18 @@ def temp_project_root():
     """Temporary directory patched as _PROJECT_ROOT."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        with patch("research_summarizer.agent._PROJECT_ROOT", root.resolve()):
+        with patch("research_summarizer.evidence._PROJECT_ROOT", root.resolve()):
             yield root
 
 
 @pytest.fixture(autouse=True)
 def clear_fetch_cache():
     """Clear the per-run fetch cache before every test."""
-    from research_summarizer import agent
+    from research_summarizer import evidence
 
-    agent._fetch_cache.clear()
+    evidence._fetch_cache.clear()
     yield
-    agent._fetch_cache.clear()
+    evidence._fetch_cache.clear()
 
 
 @pytest.fixture

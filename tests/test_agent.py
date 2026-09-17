@@ -53,8 +53,8 @@ class TestRunAgent:
     def test_url_flow_fetches_then_summarizes(self):
         model = _mock_model(_summary_json("https://example.com/article"))
 
-        with patch("research_summarizer.agent._build_model", return_value=model), \
-             patch("research_summarizer.agent.fetch_url",
+        with patch("research_summarizer.agent.build_model", return_value=model), \
+             patch("research_summarizer.evidence.fetch_url",
                    return_value="Title: T\nURL: https://example.com/article\nText: content") as mock_fetch:
             result = run_agent("https://example.com/article")
 
@@ -65,8 +65,8 @@ class TestRunAgent:
     def test_file_flow_reads_then_summarizes(self):
         model = _mock_model(_summary_json())
 
-        with patch("research_summarizer.agent._build_model", return_value=model), \
-             patch("research_summarizer.agent.read_text_file",
+        with patch("research_summarizer.agent.build_model", return_value=model), \
+             patch("research_summarizer.evidence.read_text_file",
                    return_value="File content.") as mock_read:
             result = run_agent("README.md")
 
@@ -76,8 +76,8 @@ class TestRunAgent:
     def test_topic_flow_searches_then_summarizes(self):
         model = _mock_model(_summary_json("https://example.com/story"))
 
-        with patch("research_summarizer.agent._build_model", return_value=model), \
-             patch("research_summarizer.agent.search_web",
+        with patch("research_summarizer.agent.build_model", return_value=model), \
+             patch("research_summarizer.evidence.search_web",
                    return_value="Title: R\nURL: https://example.com/story\nSnippet: ...") as mock_search:
             result = run_agent("latest AI news")
 
@@ -88,8 +88,8 @@ class TestRunAgent:
         model = _mock_model(_summary_json())
         stages = []
 
-        with patch("research_summarizer.agent._build_model", return_value=model), \
-             patch("research_summarizer.agent.fetch_url", return_value="content"):
+        with patch("research_summarizer.agent.build_model", return_value=model), \
+             patch("research_summarizer.evidence.fetch_url", return_value="content"):
             run_agent("https://example.com", on_progress=lambda stage, msg: stages.append(stage))
 
         assert stages[0] == "execute"
