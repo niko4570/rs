@@ -34,22 +34,18 @@ def build_model(timeout: int = 120) -> ChatOpenAI:
         base_url=base_url,
         model=model,
         timeout=timeout,
-        extra_body={
-            "thinking": {
-                "type": "disabled",
-            }
-        }
     )
 
 
 def summarize_evidence(request: str, evidence: str, model: ChatOpenAI) -> str:
-    """Make a single LLM call and return the raw model output.
+    """Make a single LLM call and return the raw model response.
 
-    Parsing and validation happen in ``parser.parse_summary``.
+    JSON mode is requested so reasoning models return a parseable object;
+    parsing and validation still happen in ``parser.parse_summary``.
     """
     messages = [
         SystemMessage(content=SUMMARIZE_SYSTEM_PROMPT),
         HumanMessage(content=f"Request: {request}\n\nEvidence:\n{evidence}"),
     ]
-    response = model.invoke(messages)
+    response = model.bind(response_format={"type": "json_object"}).invoke(messages)
     return getattr(response, "content", str(response))

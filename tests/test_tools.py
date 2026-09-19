@@ -2,6 +2,8 @@
 
 from unittest.mock import Mock
 
+from tavily import InvalidAPIKeyError
+
 from research_summarizer.evidence import (
     _normalize_url,
     fetch_url,
@@ -38,22 +40,22 @@ def test_resolves_relative_paths(temp_project_root):
 # ---------------------------------------------------------------------------
 
 
-def test_search_web_requires_api_key(no_serpapi_key, mocker):
+def test_search_web_requires_api_key(no_tavily_key, mocker):
     mock_load_dotenv = mocker.patch("research_summarizer.evidence.load_dotenv")
     result = search_web("example story")
-    assert "missing SERPAPI_API_KEY" in result
+    assert "missing TAVILY_API_KEY" in result
     mock_load_dotenv.assert_called_once()
 
 
-def test_parses_results(mock_serpapi_key, mocker):
-    mock_client_class = mocker.patch("research_summarizer.evidence.serpapi.Client")
+def test_parses_results(mock_tavily_key, mocker):
+    mock_client_class = mocker.patch("research_summarizer.evidence.TavilyClient")
     mock_client = mock_client_class.return_value
     mock_client.search.return_value = {
-        "organic_results": [
+        "results": [
             {
                 "title": "Example Story",
-                "link": "https://example.com/story",
-                "snippet": "Useful search snippet.",
+                "url": "https://example.com/story",
+                "content": "Useful search snippet.",
             }
         ]
     }
@@ -63,26 +65,24 @@ def test_parses_results(mock_serpapi_key, mocker):
     assert "Title: Example Story" in result
     assert "URL: https://example.com/story" in result
     assert "Snippet: Useful search snippet." in result
-    mock_client_class.assert_called_once_with(api_key="test-key", timeout=15)
-    mock_client.search.assert_called_once_with(
-        {"engine": "google", "q": "example story", "num": 5, "hl": "en"}
-    )
+    mock_client_class.assert_called_once_with(api_key="test-key")
+    mock_client.search.assert_called_once_with(query="example story", max_results=5, timeout=15)
 
 
-def test_passes_freshness_query_through_unchanged(mock_serpapi_key, mocker):
-    mock_client_class = mocker.patch("research_summarizer.evidence.serpapi.Client")
-    mock_client_class.return_value.search.return_value = {"organic_results": []}
+def test_passes_freshness_query_through_unchanged(mock_tavily_key, mocker):
+    mock_client_class = mocker.patch("research_summarizer.evidence.TavilyClient")
+    mock_client_class.return_value.search.return_value = {"results": []}
 
     search_web("Trump visit China 2025 latest news")
 
     mock_client_class.return_value.search.assert_called_once_with(
-        {"engine": "google", "q": "Trump visit China 2025 latest news", "num": 5, "hl": "en"}
+        query="Trump visit China 2025 latest news", max_results=5, timeout=15
     )
 
 
-def test_reports_serpapi_error(mock_serpapi_key, mocker):
-    mock_client_class = mocker.patch("research_summarizer.evidence.serpapi.Client")
-    mock_client_class.return_value.search.return_value = {"error": "Invalid API key."}
+def test_reports_tavily_error(mock_tavily_key, mocker):
+    mock_client_class = mocker.patch("research_summarizer.evidence.TavilyClient")
+    mock_client_class.return_value.search.side_effect = InvalidAPIKeyError("Invalid API key.")
 
     result = search_web("example story")
 

@@ -1,10 +1,14 @@
 """Shared pytest fixtures for research-summarizer-agent tests."""
 
+import os
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+
+# Tests must not emit traces to the real LangSmith project.
+os.environ["LANGSMITH_TRACING"] = "false"
 
 
 @pytest.fixture
@@ -27,14 +31,14 @@ def clear_fetch_cache():
 
 
 @pytest.fixture
-def mock_serpapi_key():
-    """Set SERPAPI_API_KEY in environment for search_web tests."""
-    with patch.dict("os.environ", {"SERPAPI_API_KEY": "test-key"}):
+def mock_tavily_key():
+    """Set TAVILY_API_KEY in environment for search_web tests."""
+    with patch.dict("os.environ", {"TAVILY_API_KEY": "test-key"}):
         yield
 
 
 @pytest.fixture
-def no_serpapi_key():
-    """Ensure SERPAPI_API_KEY is absent."""
+def no_tavily_key():
+    """Ensure TAVILY_API_KEY is absent."""
     with patch.dict("os.environ", {}, clear=True):
         yield

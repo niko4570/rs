@@ -7,7 +7,7 @@ A LangChain-based research summarizer agent that accepts a topic, URL, or local 
 - **Language:** Python 3.11+
 - **Framework:** LangChain (`create_agent`, not LangGraph)
 - **LLM:** OpenAI-compatible API (DeepSeek primary, also OpenAI)
-- **Search:** SerpApi (Google)
+- **Search:** Tavily
 - **Parsing:** trafilatura (HTML/text extraction), Python stdlib (local files)
 - **Tracing:** LangSmith (optional)
 - **Linting:** Ruff, line-length 100
@@ -30,7 +30,7 @@ tests/
 
 **Three tools** registered on the agent:
 
-1. `search_web(query)` — SerpApi Google search, auto-corrects stale years in freshness queries
+1. `search_web(query)` — Tavily web search
 2. `fetch_url(url)` — HTTP GET + trafilatura text extraction, caches per-run with URL normalization
 3. `read_text_file(path)` — reads local .txt/.md files, refuses paths outside project root
 
@@ -47,7 +47,7 @@ pip install -e .
 Copy `.env.example` to `.env` and fill in:
 
 - `OPENAI_API_KEY` + `OPENAI_BASE_URL` + `OPENAI_MODEL` (required)
-- `SERPAPI_API_KEY` (required for web search)
+- `TAVILY_API_KEY` (required for web search)
 - LangSmith vars (optional)
 
 ### Git workflow

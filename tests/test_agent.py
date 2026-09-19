@@ -18,7 +18,9 @@ def _summary_json(url: str = "https://example.com/article") -> str:
 
 def _mock_model(summary_json: str) -> Mock:
     model = Mock()
-    model.invoke.return_value = Mock(content=summary_json)
+    bound = Mock()
+    bound.invoke.return_value = Mock(content=summary_json)
+    model.bind.return_value = bound
     return model
 
 
