@@ -32,6 +32,12 @@ from tavily.errors import TimeoutError as TavilyTimeoutError
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+# Tavily search: keep the request and the resulting evidence explicitly bounded.
+MAX_SEARCH_RESULTS = 5
+MAX_SEARCH_CONTENT_CHARS = 4000  # per source
+MAX_SEARCH_EVIDENCE_CHARS = 12000  # across all sources
+MIN_SEARCH_CONTENT_CHARS = 200  # skip fragments left by the total budget
+
 # Per-run fetch cache — cleared via clear_fetch_cache() at the start of each run.
 _fetch_cache: dict[str, str] = {}
 
@@ -57,13 +63,31 @@ def _normalize_url(url: str) -> str:
 
 
 def _clean_text(text: str, max_chars: int = 6000) -> str:
-    text = re.sub(r"\s+", " ", text).strip()
-    return text[:max_chars]
+    """Normalize whitespace while preserving paragraph and line structure.
+
+    Tabs and runs of spaces are collapsed, individual lines are stripped, and
+    runs of three or more newlines are reduced to one blank line. Newlines are
+    kept so Markdown headings, lists, and paragraph breaks survive.
+    """
+    if not text:
+        return ""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"[^\S\n]+", " ", text)
+    text = "\n".join(line.strip() for line in text.split("\n"))
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()[:max_chars]
+
+
+def _clean_title(text: str, max_chars: int = 200) -> str:
+    """Collapse a title onto a single line and bound its length."""
+    if not text:
+        return ""
+    return re.sub(r"\s+", " ", text).strip()[:max_chars]
 
 
 @traceable(run_type="tool", name="search_web")
 def search_web(query: str) -> str:
-    """Search the public web for a research query and return result titles, URLs, and snippets."""
+    """Search the public web and return bounded, source-attributed evidence."""
     load_dotenv()
     api_key = os.getenv("TAVILY_API_KEY")
     if not api_key:
@@ -71,7 +95,15 @@ def search_web(query: str) -> str:
 
     client = TavilyClient(api_key=api_key)
     try:
-        data = client.search(query=query, max_results=5, timeout=15)
+        data = client.search(
+            query=query,
+            search_depth="basic",
+            topic="general",
+            max_results=MAX_SEARCH_RESULTS,
+            include_answer=False,
+            include_raw_content="markdown",
+            timeout=15,
+        )
     except (
         BadRequestError,
         ForbiddenError,
@@ -83,16 +115,44 @@ def search_web(query: str) -> str:
     ) as exc:
         return f"Search failed: {exc}"
 
-    results: list[str] = []
-    for result in data.get("results", [])[:5]:
-        title = _clean_text(result.get("title", ""), 200)
-        link = result.get("url", "")
-        snippet = _clean_text(result.get("content", ""), 300)
+    raw_results = data.get("results") if isinstance(data, dict) else None
+    if not isinstance(raw_results, list) or not raw_results:
+        return "No search results found."
+
+    entries: list[str] = []
+    remaining = MAX_SEARCH_EVIDENCE_CHARS
+    for result in raw_results[:MAX_SEARCH_RESULTS]:
+        if not isinstance(result, dict):
+            continue
+
+        title = _clean_title(result.get("title") or "")
+        link = (result.get("url") or "").strip()
         if not title or not link:
             continue
-        results.append(f"Title: {title}\nURL: {link}\nSnippet: {snippet}")
 
-    return "\n\n".join(results) if results else "No search results found."
+        # Prefer full raw content; fall back to Tavily's short content field.
+        raw_content = result.get("raw_content")
+        if isinstance(raw_content, str) and raw_content.strip():
+            content = raw_content
+        else:
+            fallback = result.get("content")
+            content = fallback if isinstance(fallback, str) else ""
+
+        separator = 2 if entries else 0
+        header = f"Title: {title}\nURL: {link}\nContent: "
+        available = remaining - separator - len(header)
+        if available < MIN_SEARCH_CONTENT_CHARS:
+            break
+
+        body = _clean_text(content, min(MAX_SEARCH_CONTENT_CHARS, available))
+        if not body:
+            continue
+
+        entry = f"{header}{body}"
+        entries.append(entry)
+        remaining -= separator + len(entry)
+
+    return "\n\n".join(entries) if entries else "No search results found."
 
 
 @traceable(run_type="tool", name="fetch_url")
@@ -128,7 +188,7 @@ def fetch_url(url: str) -> str:
 
     # Extract title from raw HTML <title> tag (simple, no BeautifulSoup needed)
     title_match = re.search(r"<title[^>]*>(.*?)</title>", downloaded, re.IGNORECASE | re.DOTALL)
-    title = _clean_text(title_match.group(1), 200) if title_match else url
+    title = _clean_title(title_match.group(1)) if title_match else url
 
     body_clean = _clean_text(body, 8000)
     result = f"Title: {title}\nURL: {url}\nText: {body_clean}"

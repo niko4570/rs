@@ -80,11 +80,41 @@ class TestRunAgent:
 
         with patch("research_summarizer.agent.build_model", return_value=model), \
              patch("research_summarizer.evidence.search_web",
-                   return_value="Title: R\nURL: https://example.com/story\nSnippet: ...") as mock_search:
+                   return_value="Title: R\nURL: https://example.com/story\nContent: ...") as mock_search:
             result = run_agent("latest AI news")
 
         mock_search.assert_called_once_with("latest AI news")
         assert isinstance(result, SummaryResult)
+
+    def test_search_evidence_is_passed_to_summarizer(self):
+        evidence = (
+            "Title: Result\nURL: https://example.com/story\n"
+            "Content: Full substantive body used for synthesis."
+        )
+
+        with patch("research_summarizer.agent.build_model", return_value=Mock()), \
+             patch("research_summarizer.evidence.search_web", return_value=evidence), \
+             patch("research_summarizer.agent.summarize_evidence",
+                   return_value=_summary_json("https://example.com/story")) as mock_summarize:
+            result = run_agent("latest AI news")
+
+        mock_summarize.assert_called_once()
+        passed_request, passed_evidence = mock_summarize.call_args.args[:2]
+        assert passed_request == "latest AI news"
+        assert passed_evidence == evidence
+        assert "Full substantive body used for synthesis." in passed_evidence
+        assert isinstance(result, SummaryResult)
+
+    def test_run_agent_makes_exactly_one_llm_call(self):
+        model = _mock_model(_summary_json("https://example.com/story"))
+        bound = model.bind.return_value
+
+        with patch("research_summarizer.agent.build_model", return_value=model), \
+             patch("research_summarizer.evidence.search_web",
+                   return_value="Title: R\nURL: https://example.com/story\nContent: body"):
+            run_agent("latest AI news")
+
+        assert bound.invoke.call_count == 1
 
     def test_progress_callback_invoked(self):
         model = _mock_model(_summary_json())
