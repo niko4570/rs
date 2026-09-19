@@ -1,370 +1,274 @@
 # AGENTS.md
 
-## Project Overview
+## Project
 
-`rs` is a small, local-only research summarizer.
+`rs` is a small, local-first research summarizer. It accepts one user request, acquires evidence through a deterministic route, performs one LLM synthesis call, and returns a validated `SummaryResult`.
 
-- **Language:** Python 3.11+
-- **Framework:** LangChain (`create_agent`, not LangGraph)
-- **LLM:** OpenAI-compatible API (DeepSeek primary, also OpenAI)
-- **Search:** Tavily
-- **Parsing:** trafilatura (HTML/text extraction), Python stdlib (local files)
-- **Tracing:** LangSmith (optional)
-- **Linting:** Ruff, line-length 100
-- **Testing:** `pytest` with `pytest-mock`
-- **Package manager:** pip (editable install: `pip install -e .`)
-- **CLI entry point:** `research-agent` (also `python -m research_summarizer.cli`)
+Current stack:
 
-- A research topic / question
-- A URL
-- A local `.txt` / `.md` / `.markdown` file
+- Python 3.11+
+- FastAPI + Uvicorn
+- Pydantic
+- `langchain-openai` as the LLM client integration
+- Tavily for topic/web search
+- `requests` + `trafilatura` for direct URL fetching
+- Python standard library for local text files
+- `pytest` + `pytest-mock` for tests
+- Ruff, line length 100
+- Optional LangSmith tracing
 
-It acquires evidence, sends that evidence to an LLM for synthesis, and returns a structured `SummaryResult`.
+The project is local-first, not a SaaS platform and not a general-purpose autonomous agent framework.
 
-The project is intentionally small. Do not introduce agentic orchestration unless there is a concrete requirement that cannot be solved more simply.
+## Product Boundary
 
-## Current Architecture
+Supported inputs:
 
-The core workflow is:
+1. A topic or research question
+2. An `http://` or `https://` URL
+3. A local `.txt`, `.md`, or `.markdown` file within the project root
+
+The system should return a structured summary based only on acquired evidence. If evidence is missing, weak, contradictory, or unavailable, the result must communicate that limitation through the model's caveats rather than inventing information.
+
+Out of scope unless explicitly requested:
+
+- Multi-user accounts or authentication
+- Database, vector database, or persistent memory
+- RAG infrastructure
+- MCP servers
+- Multi-agent systems
+- Planner, replanner, critic, reflection, or repair stages
+- Autonomous tool loops
+- Background workers, queues, Redis, Celery, or RabbitMQ
+- WebSockets, SSE, or streaming infrastructure
+- Cloud deployment infrastructure
+- General-purpose time-awareness services
+
+## Architecture
+
+The canonical workflow is:
 
 ```text
 User Request
     ↓
 Deterministic Dispatch
-    ├── URL → Fetch Web Page
-    ├── Local File → Read File
-    └── Topic → Tavily Search
-                    ↓
-                 Evidence
-                    ↓
-              One LLM Call
-                    ↓
-              Parse JSON
-                    ↓
-             SummaryResult
+    ├── URL → fetch_url()
+    ├── Local text path → read_text_file()
+    └── Topic/question → search_web() via Tavily
+                            ↓
+                         Evidence
+                            ↓
+                   One LLM synthesis call
+                            ↓
+                    Deterministic parsing
+                            ↓
+                       SummaryResult
 ```
 
-The important architectural principle is:
+Core principle:
 
-> Tools acquire evidence. The LLM synthesizes evidence.
+> Tools acquire evidence; the LLM synthesizes evidence; Python validates the output.
 
-1. `search_web(query)` — Tavily web search
-2. `fetch_url(url)` — HTTP GET + trafilatura text extraction, caches per-run with URL normalization
-3. `read_text_file(path)` — reads local .txt/.md files, refuses paths outside project root
+The workflow must remain readable from top to bottom. Prefer explicit functions and simple data flow over abstractions that hide execution order.
 
-## Core Components
+## Module Responsibilities
 
 ### `research_summarizer/agent.py`
 
-Contains the main research workflow and deterministic input dispatch.
+Owns the top-level workflow:
 
-Responsibilities include:
+- Clear the per-run fetch cache
+- Build the configured model
+- Resolve the request deterministically
+- Acquire evidence through the selected tool
+- Call the summarizer exactly once
+- Parse and validate the model output
+- Emit optional progress callbacks
 
-- `OPENAI_API_KEY` + `OPENAI_BASE_URL` + `OPENAI_MODEL` (required)
-- `TAVILY_API_KEY` (required for web search)
-- LangSmith vars (optional)
+Do not move network, filesystem, or LLM orchestration into the API or CLI layers.
 
-Keep the workflow explicit and easy to follow.
+### `research_summarizer/evidence.py`
 
-Do not turn this module into a general-purpose autonomous agent framework.
+This is the only module that performs network or filesystem evidence acquisition.
+
+It owns:
+
+- Tavily search
+- Direct URL fetching and extraction
+- Per-run URL cache and URL normalization
+- Local text-file reading and project-root boundary checks
+- Evidence formatting and bounded text handling
+
+For Tavily:
+
+- Use `TavilyClient` with `TAVILY_API_KEY`.
+- Keep the call deterministic and bounded, normally with at most five results.
+- Do not request Tavily's answer synthesis; the project LLM is responsible for synthesis.
+- Prefer `raw_content` when present; fall back to Tavily's `content` field when necessary.
+- Preserve source title and URL.
+- Apply explicit per-source and total evidence limits so a search cannot overflow the LLM context.
+- Do not pass the entire raw Tavily response or unrelated metadata to the LLM.
+- Do not fabricate missing title, URL, or content.
+- Handle empty results and Tavily/network errors explicitly.
+
+For direct URLs:
+
+- Accept only HTTP(S) URLs.
+- Preserve the existing request timeout, extraction behavior, URL normalization, and per-run cache unless a requirement justifies changing them.
+- Return a clear fetch error when the page is unavailable or has no extractable content.
+
+For local files:
+
+- Allow only supported text extensions.
+- Read as UTF-8.
+- Preserve the existing project-root path boundary protection.
+- Do not allow path traversal or reading arbitrary files outside the project root.
 
 ### `research_summarizer/summarizer.py`
 
-Contains the LLM summarization layer.
+Owns LLM configuration and the single synthesis call.
+
+Required environment variables:
+
+- `OPENAI_API_KEY`
+- `OPENAI_BASE_URL`
+- `OPENAI_MODEL`
 
 Responsibilities:
 
-- Receiving prepared evidence
-- Calling the configured LLM
-- Returning the raw model output
+- Build the OpenAI-compatible `ChatOpenAI` client
+- Send the request and prepared evidence to the model
+- Return raw model output
 
-The summarizer should not perform web searches, file access, planning, or validation loops.
+The summarizer must not perform searches, URL fetching, file access, planning, parsing, or validation repair. Normal research execution must make exactly one LLM call. Retries are acceptable only for explicitly handled transient transport/API failures and must not become additional reasoning stages.
 
 ### `research_summarizer/parser.py`
 
-Contains deterministic parsing and validation of the LLM response.
-
-Responsibilities:
-
-- Extracting the JSON object from model output
-- Validating the result with Pydantic
-- Raising a parsing/validation error when the response is invalid
-
-Do not add another LLM call for repairing malformed output.
+Owns deterministic extraction, JSON parsing, and Pydantic validation. Invalid output should raise or return a clear parsing/validation error. Do not add another LLM call to repair malformed output.
 
 ### `research_summarizer/models.py`
 
-Contains Pydantic models used by the application.
-
-The primary output model is `SummaryResult`.
-
-Keep data models separate from workflow logic.
+Contains the Pydantic data models, including `SummaryResult`. Keep schemas separate from workflow logic.
 
 ### `research_summarizer/prompts.py`
 
-Contains prompts used by the summarization layer.
-
-The prompt should make the LLM:
+Prompts must instruct the model to:
 
 - Use only supplied evidence
 - Avoid unsupported claims
-- Distinguish strong evidence from weak evidence
-- Report uncertainty or conflicting information
+- Distinguish evidence from inference
+- Report uncertainty and conflicting sources
+- Include only sources present in the evidence
 - Return the required JSON structure
-- Include only sources actually present in the evidence
 
-The prompt should not be used to implement application control flow that can be handled deterministically in Python.
+Prompts must not implement control flow that belongs in deterministic Python.
 
 ### `research_summarizer/api.py`
 
-FastAPI adapter for the local web application.
-
-The API should remain a thin layer around the core research workflow.
-
-Current responsibilities:
+Thin FastAPI adapter. It owns endpoint concerns only:
 
 - `/api/health`
 - `/api/research`
-- Input validation
+- Request validation
 - Local text-file upload handling
-- Calling the research workflow
-- Returning `SummaryResult`
-- Mapping expected errors to HTTP responses
-- Local development CORS configuration
+- Calling the shared research workflow
+- Mapping expected failures to HTTP responses
+- Local development CORS
 
-Do not move research logic into the API layer.
+Do not duplicate research logic here.
 
 ### `research_summarizer/cli.py`
 
-CLI interface for running research locally.
+Local command-line adapter. It must call the same core workflow used by the API and must not duplicate evidence acquisition or summarization logic.
 
-The CLI should call the same research core used by the API.
+## LLM and Evidence Contract
 
-Do not duplicate research logic inside the CLI.
-
-## Research Acquisition
-
-Topic research uses Tavily.
-
-Tavily is an evidence-acquisition tool, not an autonomous agent.
-
-The integration should provide useful research evidence to the synthesis layer.
-
-When implementing Tavily:
-
-1. Keep the integration deterministic.
-2. Preserve useful source metadata such as title and URL.
-3. Prefer substantive result content over search-result snippets when Tavily provides it.
-4. Do not invent source content.
-5. Do not add an independent planning/re-planning stage.
-6. Do not add multiple LLM calls merely to improve search queries.
-7. Do not introduce a separate time service or runtime date mechanism.
-
-The goal is not merely to replace the SerpApi API call.
-
-The goal is to improve the quality of evidence supplied to the summarizer.
-
-## LLM Call Policy
-
-The normal research workflow should make exactly one LLM call.
+The normal contract is:
 
 ```text
-Evidence → LLM → Structured Result
+Prepared evidence → one LLM call → JSON text → parser → SummaryResult
 ```
 
-Do not add:
+Evidence formatting may evolve, but it must remain clear, bounded, and source-attributed. If the evidence format changes, update the related tests and prompt expectations together.
 
-- Planner calls
-- Replanner calls
-- Critic calls
-- Repair calls
-- Reflection loops
-- Automatic retry-by-generation loops
+The LLM is not a source of new facts. It may synthesize, compare, and qualify information present in the evidence, but it must not claim that it performed additional searches or consulted sources that were not supplied.
 
-unless a concrete product requirement demonstrates that the one-call design is insufficient.
+## Security and Reliability
 
-Retries caused by transient API/network failures are different from additional reasoning stages and may be implemented when appropriate.
+Preserve and test the existing protections for:
 
-## No Autonomous Agent Loop
-
-This project deliberately does NOT use:
-
-- Planner
-- Replanner
-- LangGraph workflow orchestration
-- `create_agent`
-- autonomous tool loops
-- recursive agent execution
-- multi-stage agent state machines
-
-Do not reintroduce these patterns without an explicit requirement.
-
-The project should remain understandable by reading the main workflow from top to bottom.
-
-## Time Handling
-
-Do not add application-level time-awareness merely to make the model understand the current date.
-
-Do not introduce:
-
-- time MCP servers
-- time APIs
-- timezone services
-- runtime date injection
-- automatic query rewriting based on the current year
-
-The LLM already receives normal user language and can interpret ordinary temporal expressions.
-
-If a future feature has a genuine requirement for date-sensitive research, implement that requirement explicitly rather than adding a general-purpose time system.
-
-## Error Handling
-
-Errors should be handled at the appropriate layer.
-
-Expected categories include:
-
-- Invalid input
-- Unsupported file type
-- Invalid URL
-- File reading errors
-- Network errors
-- Tavily API errors
-- LLM API errors
-- Invalid model output
-- Pydantic validation errors
-
-Do not hide failures by fabricating fallback research or summary content.
-
-If evidence is insufficient, the final result should say so through `caveats`.
-
-## Security
-
-This is a local application, but basic input boundaries still matter.
-
-Preserve the existing protections around:
-
-- HTTP/HTTPS URL validation
-- Local file type restrictions
+- HTTP(S)-only URL handling
+- Invalid URL input
+- Unsupported file extensions
+- UTF-8 decoding failures
 - Upload size limits
-- UTF-8 validation
-- Local upload handling
-- Path boundaries for local files
+- Project-root path boundaries
+- Path traversal attempts
+- Network and external API failures
+- Invalid model output
 
-Do not weaken these protections for convenience.
+Never hide acquisition failures by fabricating evidence or summaries. Prefer explicit error text and a truthful caveat.
 
-When changing file or URL handling, test path traversal, unsupported schemes, and invalid input.
+Do not log or expose API keys, uploaded file contents, or unnecessary personal data.
 
-## Dependencies
+## Testing Requirements
 
-Prefer the smallest dependency set that solves the problem.
+Tests should primarily verify observable behavior and should not require live external APIs.
 
-Current stack:
+Mock Tavily, HTTP requests, and the LLM in unit tests. Integration tests may use real services only when explicitly identified and separately configured.
 
-- Python 3.11+
-- FastAPI
-- Uvicorn
-- Pydantic
-- `langchain-openai` for LLM access
-- Tavily for web research
-- Ruff for linting/formatting
+When changing Tavily integration, test at minimum:
 
-`langchain-openai` is used as an LLM client integration.
+- Missing `TAVILY_API_KEY`
+- Successful search with the intended request parameters
+- `raw_content` preferred over `content`
+- Fallback when `raw_content` is absent or empty
+- Evidence includes title and URL
+- Per-source/total length limits
+- Empty or malformed results
+- Tavily API and timeout errors
+- Evidence passed onward to the summarizer
 
-Do not introduce the LangChain agent framework simply because `langchain-openai` is already installed.
+Also maintain coverage for:
 
-Avoid adding frameworks when a small Python function is sufficient.
+- Deterministic input dispatch
+- URL validation and extraction
+- URL cache behavior
+- Local file boundaries and supported extensions
+- Parser and Pydantic validation
+- API and CLI contracts
+- Expected error mapping
 
-## Development Principles
+Tests should assert evidence content and behavior, not only that a mocked method was called.
 
-When modifying this repository:
+## Change Discipline
 
-1. Read the existing implementation before changing it.
-2. Preserve the current architecture unless the requested feature requires a structural change.
-3. Prefer deterministic Python logic over agentic orchestration.
-4. Prefer one clear data flow over abstractions that hide control flow.
-5. Keep modules focused, but do not split files merely for the sake of having more files.
-6. Do not add speculative features.
-7. Do not add infrastructure that the local MVP does not need.
-8. Make the smallest change that satisfies the requirement.
-9. Update tests when behavior changes.
-10. Update this file if the architecture materially changes.
+Before editing:
 
-## Things We Are Explicitly Not Building
+1. Read the relevant implementation, tests, and this file.
+2. Identify the existing contract that must remain stable.
+3. Make the smallest change that satisfies the requirement.
 
-Unless explicitly requested, do not add:
+After editing:
 
-- Database
-- Redis
-- Celery
-- RabbitMQ
-- Background job infrastructure
-- WebSockets
-- SSE
-- MCP servers
-- Authentication
-- User accounts
-- Multi-user SaaS infrastructure
-- Cloud deployment infrastructure
-- Agent memory
-- Vector database
-- RAG pipeline
-- Planner/Replanner
-- Multi-agent systems
-- Autonomous agent loops
-- Time-awareness services
+1. Update or add tests for changed behavior.
+2. Run the relevant test subset, then the full test suite when practical.
+3. Run Ruff on changed files.
+4. Check that no obsolete architecture remains in documentation.
+5. Confirm that no unnecessary dependency or infrastructure was introduced.
+6. Review error paths and evidence quality, not only the happy path.
 
-These may be useful in other products, but they are outside the scope of this project.
-
-## Testing
-
-Tests should focus on observable behavior.
-
-Important areas include:
-
-- Input dispatch
-- URL validation
-- Local file handling
-- Tavily evidence conversion
-- Evidence passed to the summarizer
-- LLM response parsing
-- Pydantic validation
-- API input/output behavior
-- Error handling
-
-Tests should not depend on real external APIs unless a test is explicitly designed as an integration test.
-
-Mock external services for deterministic unit tests.
-
-When changing research acquisition, test the shape and quality of the evidence passed to the LLM rather than only testing that an API function was called.
+Do not perform speculative refactors. Do not reintroduce agent frameworks or additional LLM stages without a concrete, documented product requirement.
 
 ## Definition of Done
 
-A change is not complete merely because the code runs.
+A change is complete only when:
 
-Before considering a feature complete:
-
-1. The implementation matches the current architecture.
-2. Existing tests still pass.
-3. New behavior has appropriate tests.
-4. No obsolete architecture remains in documentation.
-5. No unnecessary dependencies or infrastructure were introduced.
-6. External API failures are handled explicitly.
-7. The resulting evidence is actually useful to the summarization layer.
-
-For research-related changes, verify the complete flow:
-
-```text
-Input
-  ↓
-Evidence Acquisition
-  ↓
-Evidence
-  ↓
-One LLM Call
-  ↓
-Parsing
-  ↓
-SummaryResult
-```
-
-The primary goal is a small, reliable research summarizer—not a general-purpose autonomous agent framework.
+- It matches the deterministic architecture above.
+- Existing public API and CLI behavior remains compatible unless intentionally changed.
+- Tests cover the new or modified behavior.
+- External services are mocked in unit tests.
+- Evidence is useful, bounded, and source-attributed.
+- Failures are explicit and truthful.
+- The normal path still uses one LLM synthesis call.
+- Ruff and tests pass, or any failure is documented with its cause.
+- This file is updated when architecture, contracts, or scope materially changes.
