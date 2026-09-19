@@ -1,18 +1,22 @@
 """Shared pytest fixtures for research-summarizer-agent tests."""
 
+import os
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+# Tests must not emit traces to the real LangSmith project.
+os.environ["LANGSMITH_TRACING"] = "false"
+
 
 @pytest.fixture
 def temp_project_root():
-    """Temporary directory patched as _PROJECT_ROOT."""
+    """Temporary directory patched as PROJECT_ROOT."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        with patch("research_summarizer.evidence._PROJECT_ROOT", root.resolve()):
+        with patch("research_summarizer.evidence.PROJECT_ROOT", root.resolve()):
             yield root
 
 
@@ -27,14 +31,14 @@ def clear_fetch_cache():
 
 
 @pytest.fixture
-def mock_serpapi_key():
-    """Set SERPAPI_API_KEY in environment for search_web tests."""
-    with patch.dict("os.environ", {"SERPAPI_API_KEY": "test-key"}):
+def mock_tavily_key():
+    """Set TAVILY_API_KEY in environment for search_web tests."""
+    with patch.dict("os.environ", {"TAVILY_API_KEY": "test-key"}):
         yield
 
 
 @pytest.fixture
-def no_serpapi_key():
-    """Ensure SERPAPI_API_KEY is absent."""
+def no_tavily_key():
+    """Ensure TAVILY_API_KEY is absent."""
     with patch.dict("os.environ", {}, clear=True):
         yield

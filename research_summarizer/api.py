@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
+from typing import Annotated
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -16,14 +17,14 @@ from openai import APIError
 from starlette.concurrency import run_in_threadpool
 
 from research_summarizer.agent import run_agent
-from research_summarizer.evidence import _PROJECT_ROOT
+from research_summarizer.evidence import PROJECT_ROOT
 from research_summarizer.models import SummaryResult
 from research_summarizer.parser import ParseError
 
 # Uploaded files are stored under the project root so the existing
 # ``read_text_file`` tool (which refuses paths outside the project root)
 # can read them without weakening that security boundary.
-_UPLOADS_DIR = _PROJECT_ROOT / ".uploads"
+_UPLOADS_DIR = PROJECT_ROOT / ".uploads"
 _UPLOADS_RELATIVE_DIR = ".uploads"
 
 _ALLOWED_EXTENSIONS = {".txt", ".md", ".markdown"}
@@ -51,9 +52,9 @@ def health() -> dict[str, str]:
 
 @app.post("/api/research", response_model=SummaryResult)
 async def research(
-    input_type: str = Form(...),
-    url: str | None = Form(None),
-    file: UploadFile | None = File(None),
+    input_type: Annotated[str, Form()],
+    url: Annotated[str | None, Form()] = None,
+    file: Annotated[UploadFile | None, File()] = None,
 ) -> SummaryResult:
     """Run the research workflow for a URL or an uploaded text file.
 

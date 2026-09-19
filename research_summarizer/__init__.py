@@ -5,10 +5,10 @@ from research_summarizer.models import Source, SummaryResult
 from research_summarizer.parser import ParseError, parse_summary
 
 __all__ = [
-    "run_agent",
+    "ParseError",
     "ProgressCallback",
     "Source",
     "SummaryResult",
     "parse_summary",
-    "ParseError",
+    "run_agent",
 ]

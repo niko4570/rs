@@ -4,7 +4,16 @@
 
 `rs` is a small, local-only research summarizer.
 
-The project accepts one of three input types:
+- **Language:** Python 3.11+
+- **Framework:** LangChain (`create_agent`, not LangGraph)
+- **LLM:** OpenAI-compatible API (DeepSeek primary, also OpenAI)
+- **Search:** Tavily
+- **Parsing:** trafilatura (HTML/text extraction), Python stdlib (local files)
+- **Tracing:** LangSmith (optional)
+- **Linting:** Ruff, line-length 100
+- **Testing:** `pytest` with `pytest-mock`
+- **Package manager:** pip (editable install: `pip install -e .`)
+- **CLI entry point:** `research-agent` (also `python -m research_summarizer.cli`)
 
 - A research topic / question
 - A URL
@@ -39,7 +48,9 @@ The important architectural principle is:
 
 > Tools acquire evidence. The LLM synthesizes evidence.
 
-The application is not intended to autonomously plan, re-plan, execute multi-step tasks, or maintain an agent loop.
+1. `search_web(query)` — Tavily web search
+2. `fetch_url(url)` — HTTP GET + trafilatura text extraction, caches per-run with URL normalization
+3. `read_text_file(path)` — reads local .txt/.md files, refuses paths outside project root
 
 ## Core Components
 
@@ -49,14 +60,9 @@ Contains the main research workflow and deterministic input dispatch.
 
 Responsibilities include:
 
-- Resolving the input type
-- Calling the appropriate evidence-acquisition function
-- Fetching URLs
-- Reading local text files
-- Searching topics with Tavily
-- Constructing evidence for the LLM
-- Calling the LLM exactly once
-- Passing the result to the parser
+- `OPENAI_API_KEY` + `OPENAI_BASE_URL` + `OPENAI_MODEL` (required)
+- `TAVILY_API_KEY` (required for web search)
+- LangSmith vars (optional)
 
 Keep the workflow explicit and easy to follow.
 

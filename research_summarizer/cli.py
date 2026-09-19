@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Callable
 
 from research_summarizer.agent import ProgressCallback, run_agent
 from research_summarizer.parser import ParseError

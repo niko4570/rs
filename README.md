@@ -4,7 +4,7 @@ A minimal, local-only research summarizer that accepts a topic, URL, or local te
 
 ## Features
 
-- **Web Search**: Searches Google through SerpApi for topic research
+- **Web Search**: Searches the web through Tavily for topic research
 - **URL Fetching**: Reads and summarizes web pages
 - **Local File Reading**: Processes local `.txt` or `.md` files
 - **LangSmith Tracing**: Ready for tracing and debugging with LangSmith
@@ -20,7 +20,7 @@ request ──► dispatch ──► one tool ──► one LLM call ──► S
               │            │              └─ synthesize JSON (summary, key details,
               │            │                 sources, caveats)
               │            └─ URL → fetch, .txt/.md file → read_file,
-              │               anything else → search (SerpApi)
+              │               anything else → search (Tavily)
               └─ deterministic, no LLM planning
 ```
 
@@ -66,10 +66,10 @@ OPENAI_BASE_URL=https://api.deepseek.com
 OPENAI_MODEL=deepseek-chat
 ```
 
-You also need a SerpApi key for web search:
+You also need a Tavily key for web search:
 
 ```bash
-SERPAPI_API_KEY=...
+TAVILY_API_KEY=tvly-...
 ```
 
 ## Usage
@@ -119,10 +119,10 @@ This project uses:
 This folder already had a `deepseek_api` variable, so the agent also accepts that
 name for convenience.
 
-For Google search through SerpApi:
+For web search through Tavily:
 
 ```bash
-SERPAPI_API_KEY=...
+TAVILY_API_KEY=tvly-...
 ```
 
 ## Optional LangSmith Tracing

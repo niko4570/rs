@@ -13,11 +13,24 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import requests
-import serpapi
 import trafilatura
 from dotenv import load_dotenv
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+# Ensure environment variables from .env are loaded before importing tracing utilities.
+load_dotenv()
+
+from langsmith import traceable
+from tavily import TavilyClient
+from tavily.errors import (
+    BadRequestError,
+    ForbiddenError,
+    InvalidAPIKeyError,
+    MissingAPIKeyError,
+    UsageLimitExceededError,
+)
+from tavily.errors import TimeoutError as TavilyTimeoutError
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Per-run fetch cache — cleared via clear_fetch_cache() at the start of each run.
 _fetch_cache: dict[str, str] = {}
@@ -38,7 +51,9 @@ def _normalize_url(url: str) -> str:
     parsed = urlparse(url)
     params = [(k, v) for k, v in parse_qsl(parsed.query) if k.lower() not in TRACKING_PARAMS]
     query = urlencode(params)
-    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, query, parsed.fragment))
+    return urlunparse(
+        (parsed.scheme, parsed.netloc, parsed.path, parsed.params, query, parsed.fragment)
+    )
 
 
 def _clean_text(text: str, max_chars: int = 6000) -> str:
@@ -46,34 +61,33 @@ def _clean_text(text: str, max_chars: int = 6000) -> str:
     return text[:max_chars]
 
 
+@traceable(run_type="tool", name="search_web")
 def search_web(query: str) -> str:
     """Search the public web for a research query and return result titles, URLs, and snippets."""
     load_dotenv()
-    api_key = os.getenv("SERPAPI_API_KEY")
+    api_key = os.getenv("TAVILY_API_KEY")
     if not api_key:
-        return "Search failed: missing SERPAPI_API_KEY environment variable."
+        return "Search failed: missing TAVILY_API_KEY environment variable."
 
-    client = serpapi.Client(api_key=api_key, timeout=15)
+    client = TavilyClient(api_key=api_key)
     try:
-        data = client.search(
-            {
-                "engine": "google",
-                "q": query,
-                "num": 5,
-                "hl": "en",
-            }
-        )
-    except (serpapi.HTTPError, serpapi.TimeoutError) as exc:
+        data = client.search(query=query, max_results=5, timeout=15)
+    except (
+        BadRequestError,
+        ForbiddenError,
+        InvalidAPIKeyError,
+        MissingAPIKeyError,
+        UsageLimitExceededError,
+        TavilyTimeoutError,
+        requests.exceptions.RequestException,
+    ) as exc:
         return f"Search failed: {exc}"
 
-    if data.get("error"):
-        return f"Search failed: {data['error']}"
-
     results: list[str] = []
-    for result in data.get("organic_results", [])[:5]:
+    for result in data.get("results", [])[:5]:
         title = _clean_text(result.get("title", ""), 200)
-        link = result.get("link", "")
-        snippet = _clean_text(result.get("snippet", ""), 300)
+        link = result.get("url", "")
+        snippet = _clean_text(result.get("content", ""), 300)
         if not title or not link:
             continue
         results.append(f"Title: {title}\nURL: {link}\nSnippet: {snippet}")
@@ -81,6 +95,7 @@ def search_web(query: str) -> str:
     return "\n\n".join(results) if results else "No search results found."
 
 
+@traceable(run_type="tool", name="fetch_url")
 def fetch_url(url: str) -> str:
     """Fetch a URL and return readable page text for summarization.
     Duplicate fetches (same URL minus tracking params) are served from cache."""
@@ -122,17 +137,18 @@ def fetch_url(url: str) -> str:
     return result
 
 
+@traceable(run_type="tool", name="read_text_file")
 def read_text_file(path: str) -> str:
     """Read a local text or markdown file from the current project for summarization."""
     file_path = Path(path).expanduser()
     if not file_path.is_absolute():
-        file_path = (_PROJECT_ROOT / file_path).resolve()
+        file_path = (PROJECT_ROOT / file_path).resolve()
     else:
         file_path = file_path.resolve()
 
     # Security: refuse paths outside the project root
     try:
-        file_path.relative_to(_PROJECT_ROOT)
+        file_path.relative_to(PROJECT_ROOT)
     except ValueError:
         return "Refusing to read outside the current project folder."
 

@@ -6,7 +6,6 @@ import pytest
 
 from research_summarizer.parser import ParseError, _extract_json, parse_summary
 
-
 # ---------------------------------------------------------------------------
 # _extract_json
 # ---------------------------------------------------------------------------
