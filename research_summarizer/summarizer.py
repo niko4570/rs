@@ -25,7 +25,8 @@ def build_model(timeout: int = 120) -> ChatOpenAI:
 
     if not all([api_key, base_url, model]):
         raise ValueError(
-            "Missing API configuration. Set OPENAI_API_KEY, OPENAI_BASE_URL, and OPENAI_MODEL in your environment variables."
+            "Missing API configuration. Set OPENAI_API_KEY, OPENAI_BASE_URL, "
+            "and OPENAI_MODEL in your environment variables."
         )
 
     return ChatOpenAI(

@@ -17,7 +17,7 @@ import serpapi
 import trafilatura
 from dotenv import load_dotenv
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Per-run fetch cache — cleared via clear_fetch_cache() at the start of each run.
 _fetch_cache: dict[str, str] = {}
@@ -38,7 +38,9 @@ def _normalize_url(url: str) -> str:
     parsed = urlparse(url)
     params = [(k, v) for k, v in parse_qsl(parsed.query) if k.lower() not in TRACKING_PARAMS]
     query = urlencode(params)
-    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, parsed.params, query, parsed.fragment))
+    return urlunparse(
+        (parsed.scheme, parsed.netloc, parsed.path, parsed.params, query, parsed.fragment)
+    )
 
 
 def _clean_text(text: str, max_chars: int = 6000) -> str:
@@ -126,13 +128,13 @@ def read_text_file(path: str) -> str:
     """Read a local text or markdown file from the current project for summarization."""
     file_path = Path(path).expanduser()
     if not file_path.is_absolute():
-        file_path = (_PROJECT_ROOT / file_path).resolve()
+        file_path = (PROJECT_ROOT / file_path).resolve()
     else:
         file_path = file_path.resolve()
 
     # Security: refuse paths outside the project root
     try:
-        file_path.relative_to(_PROJECT_ROOT)
+        file_path.relative_to(PROJECT_ROOT)
     except ValueError:
         return "Refusing to read outside the current project folder."
 

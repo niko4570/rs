@@ -13,9 +13,8 @@ Top-level data flow:
 
 from __future__ import annotations
 
-from typing import Callable
-
 import re
+from collections.abc import Callable
 
 from dotenv import load_dotenv
 

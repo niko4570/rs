@@ -1,7 +1,6 @@
 """Unit tests for research summarizer tools — pytest edition."""
 
-from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from research_summarizer.evidence import (
     _normalize_url,
@@ -149,7 +148,7 @@ def test_fetch_caches_duplicate_url(mocker):
     mock_response.raise_for_status.return_value = None
     mock_get.return_value = mock_response
 
-    first = fetch_url("https://example.com/article")
+    fetch_url("https://example.com/article")
     second = fetch_url("https://example.com/article")
 
     assert mock_get.call_count == 1

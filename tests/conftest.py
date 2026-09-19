@@ -9,10 +9,10 @@ import pytest
 
 @pytest.fixture
 def temp_project_root():
-    """Temporary directory patched as _PROJECT_ROOT."""
+    """Temporary directory patched as PROJECT_ROOT."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        with patch("research_summarizer.evidence._PROJECT_ROOT", root.resolve()):
+        with patch("research_summarizer.evidence.PROJECT_ROOT", root.resolve()):
             yield root
 
 
