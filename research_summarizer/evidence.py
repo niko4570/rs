@@ -1,14 +1,16 @@
-"""Evidence acquisition: turn a classified input into raw evidence text.
+"""Evidence acquisition: turn a classified input into bounded evidence.
 
 This module is the only place that performs network or filesystem access.
-It selects a tool based on the action chosen by input dispatch and returns
-the evidence string that is later handed to the summarizer.
+Search evidence is acquired as structured ``EvidenceItem`` records so a later
+selection stage can consume it; ``format_evidence`` renders the bounded,
+source-attributed text that the summarizer receives.
 """
 
 from __future__ import annotations
 
 import os
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -38,6 +40,34 @@ MAX_SEARCH_RESULTS = 5
 MAX_SEARCH_CONTENT_CHARS = 6000  # per-source content cap
 MAX_SEARCH_EVIDENCE_CHARS = 20000  # total evidence cap across all sources
 MIN_SEARCH_CONTENT_CHARS = 200  # stop when the remaining budget is too small
+
+
+@dataclass(frozen=True)
+class EvidenceItem:
+    """One normalized source of evidence.
+
+    This is the internal contract shared by acquisition, selection, and
+    synthesis formatting. Only ``title``, ``url``, and ``content`` are part of
+    it; provider-specific metadata never reaches this layer.
+    """
+
+    id: str
+    title: str
+    url: str
+    content: str
+
+
+@dataclass(frozen=True)
+class EvidenceResult:
+    """Structured outcome of evidence acquisition or selection.
+
+    ``items`` holds normalized sources. ``note`` explains an empty or failed
+    acquisition and is rendered only when ``items`` is empty.
+    """
+
+    items: tuple[EvidenceItem, ...] = ()
+    note: str = ""
+
 
 # Per-run fetch cache — cleared via clear_fetch_cache() at the start of each run.
 _fetch_cache: dict[str, str] = {}
@@ -139,13 +169,29 @@ def _select_search_content(result: dict) -> str:
     return fallback if isinstance(fallback, str) else ""
 
 
+def format_evidence(result: EvidenceResult) -> str:
+    """Render structured evidence into the bounded, source-attributed text contract.
+
+    Acquisition stays structured, while the summarizer still receives only
+    Title / URL / Content blocks.
+    """
+    if not result.items:
+        return result.note or "No evidence available."
+    return "\n\n".join(
+        f"Title: {item.title}\nURL: {item.url}\nContent: {item.content}"
+        for item in result.items
+    )
+
+
 @traceable(run_type="tool", name="search_web")
-def search_web(query: str) -> str:
-    """Search the public web and return bounded, source-attributed evidence."""
+def search_web_items(query: str) -> EvidenceResult:
+    """Search the public web and return bounded, structured evidence."""
     load_dotenv()
     api_key = os.getenv("TAVILY_API_KEY")
     if not api_key:
-        return "Search failed: missing TAVILY_API_KEY environment variable."
+        return EvidenceResult(
+            note="Search failed: missing TAVILY_API_KEY environment variable."
+        )
 
     client = TavilyClient(api_key=api_key)
     try:
@@ -167,13 +213,13 @@ def search_web(query: str) -> str:
         TavilyTimeoutError,
         requests.exceptions.RequestException,
     ) as exc:
-        return f"Search failed: {exc}"
+        return EvidenceResult(note=f"Search failed: {exc}")
 
     raw_results = data.get("results") if isinstance(data, dict) else None
     if not isinstance(raw_results, list) or not raw_results:
-        return "No search results found."
+        return EvidenceResult(note="No search results found.")
 
-    entries: list[str] = []
+    items: list[EvidenceItem] = []
     remaining = MAX_SEARCH_EVIDENCE_CHARS
     for result in raw_results[:MAX_SEARCH_RESULTS]:
         if not isinstance(result, dict):
@@ -186,7 +232,7 @@ def search_web(query: str) -> str:
 
         content = _select_search_content(result)
 
-        separator = 2 if entries else 0
+        separator = 2 if items else 0
         header = f"Title: {title}\nURL: {link}\nContent: "
         available = remaining - separator - len(header)
         if available < MIN_SEARCH_CONTENT_CHARS:
@@ -196,11 +242,18 @@ def search_web(query: str) -> str:
         if not body:
             continue
 
-        entry = f"{header}{body}"
-        entries.append(entry)
-        remaining -= separator + len(entry)
+        item = EvidenceItem(id=f"S{len(items) + 1}", title=title, url=link, content=body)
+        items.append(item)
+        remaining -= separator + len(header) + len(body)
 
-    return "\n\n".join(entries) if entries else "No search results found."
+    if not items:
+        return EvidenceResult(note="No search results found.")
+    return EvidenceResult(items=tuple(items))
+
+
+def search_web(query: str) -> str:
+    """Search the public web and return bounded, source-attributed evidence text."""
+    return format_evidence(search_web_items(query))
 
 
 @traceable(run_type="tool", name="fetch_url")

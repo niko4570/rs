@@ -9,10 +9,13 @@ from tavily.errors import TimeoutError as TavilyTimeoutError
 from research_summarizer.evidence import (
     MAX_SEARCH_CONTENT_CHARS,
     MAX_SEARCH_EVIDENCE_CHARS,
+    EvidenceResult,
     _normalize_url,
     fetch_url,
+    format_evidence,
     read_text_file,
     search_web,
+    search_web_items,
 )
 
 # ---------------------------------------------------------------------------
@@ -422,6 +425,99 @@ def test_search_web_does_not_leak_tavily_metadata(mock_tavily_key, mocker):
     assert "published_date" not in result
     assert "request_id" not in result
     assert "response_time" not in result
+
+
+# ---------------------------------------------------------------------------
+# structured evidence (search_web_items / format_evidence)
+# ---------------------------------------------------------------------------
+
+
+def test_search_web_items_returns_structured_sources(mock_tavily_key, mocker):
+    _mock_search(
+        mocker,
+        {
+            "results": [
+                {
+                    "title": "A",
+                    "url": "https://a.example",
+                    "raw_content": "Body A.",
+                    "score": 0.9,
+                    "favicon": "https://a.example/favicon.ico",
+                },
+                {"title": "B", "url": "https://b.example", "content": "Body B."},
+            ]
+        },
+    )
+
+    result = search_web_items("query")
+
+    assert isinstance(result, EvidenceResult)
+    assert result.note == ""
+    assert [item.id for item in result.items] == ["S1", "S2"]
+    assert result.items[0].title == "A"
+    assert result.items[0].url == "https://a.example"
+    assert result.items[0].content == "Body A."
+    assert result.items[1].content == "Body B."
+
+
+def test_format_evidence_matches_search_web_text(mock_tavily_key, mocker):
+    _mock_search(
+        mocker,
+        {
+            "results": [
+                {"title": "A", "url": "https://a.example", "raw_content": "Body A."},
+                {"title": "B", "url": "https://b.example", "content": "Body B."},
+            ]
+        },
+    )
+
+    result = search_web_items("query")
+
+    assert format_evidence(result) == search_web("query")
+    assert format_evidence(result) == (
+        "Title: A\nURL: https://a.example\nContent: Body A.\n\n"
+        "Title: B\nURL: https://b.example\nContent: Body B."
+    )
+
+
+def test_search_web_items_skips_invalid_and_numbers_sequentially(mock_tavily_key, mocker):
+    _mock_search(
+        mocker,
+        {
+            "results": [
+                {"title": "", "url": "https://x.example", "content": "Body."},
+                {"title": "Valid", "url": "https://v.example", "content": "Body one."},
+                {"title": "Empty", "url": "https://e.example", "content": "  "},
+                {"title": "Valid 2", "url": "https://v2.example", "content": "Body two."},
+            ]
+        },
+    )
+
+    result = search_web_items("query")
+
+    assert [item.id for item in result.items] == ["S1", "S2"]
+    assert [item.title for item in result.items] == ["Valid", "Valid 2"]
+
+
+def test_search_web_items_empty_result_carries_note(mock_tavily_key, mocker):
+    _mock_search(mocker, {"results": []})
+
+    result = search_web_items("query")
+
+    assert result.items == ()
+    assert result.note == "No search results found."
+    assert format_evidence(result) == "No search results found."
+
+
+def test_search_web_items_error_carries_note(mock_tavily_key, mocker):
+    _, mock_search = _mock_search(mocker, {})
+    mock_search.side_effect = InvalidAPIKeyError("Invalid API key.")
+
+    result = search_web_items("query")
+
+    assert result.items == ()
+    assert result.note == "Search failed: Invalid API key."
+    assert format_evidence(result) == "Search failed: Invalid API key."
 
 
 # ---------------------------------------------------------------------------
