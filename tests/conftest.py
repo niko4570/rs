@@ -42,3 +42,10 @@ def no_tavily_key():
     """Ensure TAVILY_API_KEY is absent."""
     with patch.dict("os.environ", {}, clear=True):
         yield
+
+
+@pytest.fixture
+def no_typesafe_key():
+    """Ensure TYPESAFE_API_KEY is absent for Jev fallback tests."""
+    with patch.dict("os.environ", {}, clear=True):
+        yield

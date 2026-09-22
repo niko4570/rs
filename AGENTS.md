@@ -2,7 +2,7 @@
 
 ## Project
 
-`rs` is a small, local-first research summarizer. It accepts one user request, acquires evidence through a deterministic route, performs one LLM synthesis call, and returns a validated `SummaryResult`.
+`rs` is a small, local-first research summarizer. It accepts one user request, acquires evidence through a deterministic route, uses TypeSafe Jev to select relevant search evidence, performs one LLM synthesis call, and returns a validated `SummaryResult`.
 
 Current stack:
 
@@ -11,6 +11,7 @@ Current stack:
 - Pydantic
 - `langchain-openai` as the LLM client integration
 - Tavily for topic/web search
+- TypeSafe Jev for typed search-evidence selection
 - `requests` + `trafilatura` for direct URL fetching
 - Python standard library for local text files
 - `pytest` + `pytest-mock` for tests
@@ -51,22 +52,29 @@ The canonical workflow is:
 User Request
     ↓
 Deterministic Dispatch
-    ├── URL → fetch_url()
-    ├── Local text path → read_text_file()
-    └── Topic/question → search_web() via Tavily
-                            ↓
-                         Evidence
-                            ↓
-                   One LLM synthesis call
-                            ↓
-                    Deterministic parsing
-                            ↓
-                       SummaryResult
+    ├── URL → fetch_url() ───────────────┐
+    ├── Local file → read_text_file() ───┤
+    └── Topic → search_web() via Tavily  │
+                ↓                        │
+          Bounded evidence               │
+                ↓                        │
+        Jev judgment (search only)       │
+                ↓                        │
+   Selected evidence (thresholds in code)│
+                └────────────┬───────────┘
+                             ↓
+                  One LLM synthesis call
+                             ↓
+                   Deterministic parsing
+                             ↓
+                      SummaryResult
 ```
+
+URL and local-file evidence bypass Jev and pass straight to synthesis.
 
 Core principle:
 
-> Tools acquire evidence; the LLM synthesizes evidence; Python validates the output.
+> Tools acquire evidence; Jev supplies typed relevance judgments; code selects; the LLM synthesizes evidence; Python validates the output.
 
 The workflow must remain readable from top to bottom. Prefer explicit functions and simple data flow over abstractions that hide execution order.
 
@@ -80,6 +88,7 @@ Owns the top-level workflow:
 - Build the configured model
 - Resolve the request deterministically
 - Acquire evidence through the selected tool
+- Route search evidence through Jev selection before formatting
 - Call the summarizer exactly once
 - Parse and validate the model output
 - Emit optional progress callbacks
@@ -96,7 +105,8 @@ It owns:
 - Direct URL fetching and extraction
 - Per-run URL cache and URL normalization
 - Local text-file reading and project-root boundary checks
-- Evidence formatting and bounded text handling
+- Structured `EvidenceItem` / `EvidenceResult` acquisition and bounded text handling
+- `format_evidence` rendering of the bounded Title / URL / Content text contract
 
 For Tavily:
 
@@ -123,6 +133,19 @@ For local files:
 - Preserve the existing project-root path boundary protection.
 - Do not allow path traversal or reading arbitrary files outside the project root.
 
+### `research_summarizer/jev.py`
+
+Owns TypeSafe Jev evidence selection for the search path.
+
+- Build the `TypeSafeClient` from `TYPESAFE_API_KEY` (optional `TYPESAFE_MODEL`, `TYPESAFE_ENDPOINT`).
+- Ask one Jev request per source, returning typed probabilities only.
+- Apply deterministic selection thresholds in code (`THRESHOLDS`, `MAX_SELECTED_SOURCES`).
+- Return an `EvidenceResult` of selected sources, or a truthful note when nothing is relevant.
+
+Jev is a judgment service, not a synthesis model. It must not generate prose, add facts, or decide policy. It only runs for the topic/search path; explicit URL and local-file evidence bypass it unchanged. On missing configuration or service failure it degrades to passing all acquired evidence through.
+
+The selection step must not replace the summarizer's single synthesis call.
+
 ### `research_summarizer/summarizer.py`
 
 Owns LLM configuration and the single synthesis call.
@@ -139,7 +162,7 @@ Responsibilities:
 - Send the request and prepared evidence to the model
 - Return raw model output
 
-The summarizer must not perform searches, URL fetching, file access, planning, parsing, or validation repair. Normal research execution must make exactly one LLM call. Retries are acceptable only for explicitly handled transient transport/API failures and must not become additional reasoning stages.
+The summarizer must not perform searches, URL fetching, file access, evidence selection, planning, parsing, or validation repair. Normal research execution must make exactly one synthesis LLM call. Jev evidence selection is a separate typed judgment service (see `jev.py`) and must not become a second prose-generation or reasoning stage. Retries are acceptable only for explicitly handled transient transport/API failures and must not become additional reasoning stages.
 
 ### `research_summarizer/parser.py`
 
@@ -185,10 +208,16 @@ Local command-line adapter. It must call the same core workflow used by the API 
 The normal contract is:
 
 ```text
-Prepared evidence → one LLM call → JSON text → parser → SummaryResult
+Prepared evidence → one synthesis LLM call → JSON text → parser → SummaryResult
 ```
 
-Evidence formatting may evolve, but it must remain clear, bounded, and source-attributed. If the evidence format changes, update the related tests and prompt expectations together.
+For search requests, selection happens before synthesis:
+
+```text
+Search evidence → Jev per-source judgments → code thresholds → selected evidence → synthesis
+```
+
+Evidence is acquired as bounded, source-attributed `EvidenceItem` records and rendered through `format_evidence`. Evidence formatting may evolve, but it must remain clear, bounded, and source-attributed. If the evidence format changes, update the related tests and prompt expectations together. Jev judgments are probabilities, not evidence, and are not passed to the synthesizer as facts.
 
 The LLM is not a source of new facts. It may synthesize, compare, and qualify information present in the evidence, but it must not claim that it performed additional searches or consulted sources that were not supplied.
 
@@ -227,6 +256,17 @@ When changing Tavily integration, test at minimum:
 - Empty or malformed results
 - Tavily API and timeout errors
 - Evidence passed onward to the summarizer
+- Structured `EvidenceItem` output and `format_evidence` parity
+
+When changing Jev selection, test at minimum:
+
+- One request per source with contract-only state (title, url, content)
+- Selection thresholds, ordering, and the top-3 cap
+- Prompt-injection exclusion
+- Fallback to all acquired evidence on missing key or service error
+- Empty/irrelevant results producing a truthful note
+- Search path uses selection; URL and file paths bypass it
+- The summarizer still makes exactly one synthesis call
 
 Also maintain coverage for:
 
@@ -270,5 +310,6 @@ A change is complete only when:
 - Evidence is useful, bounded, and source-attributed.
 - Failures are explicit and truthful.
 - The normal path still uses one LLM synthesis call.
+- Jev selection runs only on search and degrades to evidence pass-through on failure.
 - Ruff and tests pass, or any failure is documented with its cause.
 - This file is updated when architecture, contracts, or scope materially changes.

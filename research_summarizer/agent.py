@@ -4,7 +4,8 @@ Top-level data flow:
 
     Input
       -> Input Dispatch        (_resolve_action)
-      -> Evidence Acquisition  (acquire_evidence)
+      -> Evidence Acquisition  (search_web_items / acquire_evidence)
+      -> Jev selection         (judge_evidence, search only)
       -> Evidence
       -> Summarizer            (one LLM call)
       -> Parser                (parse_summary)
@@ -23,7 +24,13 @@ load_dotenv()
 
 from langsmith import traceable
 
-from research_summarizer.evidence import acquire_evidence, clear_fetch_cache
+from research_summarizer.evidence import (
+    acquire_evidence,
+    clear_fetch_cache,
+    format_evidence,
+    search_web_items,
+)
+from research_summarizer.jev import judge_evidence
 from research_summarizer.models import SummaryResult
 from research_summarizer.parser import parse_summary
 from research_summarizer.summarizer import build_model, summarize_evidence
@@ -60,7 +67,11 @@ def run_agent(request: str, on_progress: ProgressCallback | None = None) -> Summ
 
     action, tool_input = _resolve_action(request)
     _progress(on_progress, "execute", f"{action}: {tool_input}")
-    evidence = acquire_evidence(action, tool_input)
+
+    if action == "search":
+        evidence = _acquire_search_evidence(request, tool_input, on_progress)
+    else:
+        evidence = acquire_evidence(action, tool_input)
 
     _progress(on_progress, "summarize", "Summarizing evidence...")
     raw_answer = summarize_evidence(request, evidence, model)
@@ -69,6 +80,19 @@ def run_agent(request: str, on_progress: ProgressCallback | None = None) -> Summ
 
     _progress(on_progress, "done", "Done")
     return result
+
+
+def _acquire_search_evidence(
+    request: str, query: str, on_progress: ProgressCallback | None
+) -> str:
+    """Acquire search evidence, let Jev select sources, then format for synthesis."""
+    acquired = search_web_items(query)
+    if not acquired.items:
+        return format_evidence(acquired)
+
+    _progress(on_progress, "judge", "Selecting relevant evidence...")
+    selected = judge_evidence(request, acquired.items)
+    return format_evidence(selected)
 
 
 def _progress(cb: ProgressCallback | None, stage: str, message: str) -> None:

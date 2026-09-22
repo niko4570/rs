@@ -5,6 +5,7 @@ A minimal, local-only research summarizer that accepts a topic, URL, or local te
 ## Features
 
 - **Web Search**: Searches the web through Tavily for topic research
+- **Evidence Selection**: Uses TypeSafe Jev to rank and keep the most relevant search sources
 - **URL Fetching**: Reads and summarizes web pages
 - **Local File Reading**: Processes local `.txt` or `.md` files
 - **LangSmith Tracing**: Ready for tracing and debugging with LangSmith
@@ -15,16 +16,20 @@ A minimal, local-only research summarizer that accepts a topic, URL, or local te
 The workflow is intentionally minimal:
 
 ```text
-request ──► dispatch ──► one tool ──► one LLM call ──► SummaryResult
-              │            │              │
-              │            │              └─ synthesize JSON (summary, key details,
-              │            │                 sources, caveats)
-              │            └─ URL → fetch, .txt/.md file → read_file,
-              │               anything else → search (Tavily)
+request ──► dispatch ──► evidence ──► [Jev selection] ──► one LLM call ──► SummaryResult
+              │             │              │                   │
+              │             │              │                   └─ synthesize JSON (summary,
+              │             │              │                      key details, sources, caveats)
+              │             │              └─ search only: TypeSafe Jev ranks sources,
+              │             │                 code keeps the top 3
+              │             └─ URL → fetch, .txt/.md file → read_file,
+              │                anything else → search (Tavily)
               └─ deterministic, no LLM planning
 ```
 
-Each request makes exactly one LLM call.
+Each request makes exactly one synthesis LLM call. Topic searches also make
+one Jev judgment call per source (TypeSafe) before synthesis; URL and file
+requests skip Jev.
 
 ## Installation
 
@@ -71,6 +76,17 @@ You also need a Tavily key for web search:
 ```bash
 TAVILY_API_KEY=tvly-...
 ```
+
+And a TypeSafe key for Jev evidence selection on topic searches:
+
+```bash
+TYPESAFE_API_KEY=...
+# Optional; defaults to jev-latest
+TYPESAFE_MODEL=jev-latest
+```
+
+If `TYPESAFE_API_KEY` is unset or Jev is unavailable, search evidence is used
+as-is (selection is skipped) rather than failing the request.
 
 ## Usage
 
