@@ -7,3 +7,7 @@ __pycache__/
 *.egg-info/
 .worktrees/
 .uploads/
+
+# Locally installed agent skills (not shared in the repo)
+.pi/
+skills-lock.json
