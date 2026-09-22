@@ -309,6 +309,121 @@ def test_search_web_reports_network_error(mock_tavily_key, mocker):
     assert "Search failed: Connection refused" in result
 
 
+def test_search_web_skips_when_raw_content_and_content_empty(mock_tavily_key, mocker):
+    _mock_search(
+        mocker,
+        {
+            "results": [
+                {
+                    "title": "Empty",
+                    "url": "https://example.com/empty",
+                    "raw_content": "   \n  ",
+                    "content": "",
+                }
+            ]
+        },
+    )
+
+    assert search_web("example story") == "No search results found."
+
+
+def test_search_web_preserves_fenced_code_blocks(mock_tavily_key, mocker):
+    raw_content = (
+        "# Title\n\n"
+        "```python\n"
+        "def add(a, b):\n"
+        "    return a + b   # keep indentation and spacing\n"
+        "```\n\n"
+        "After code."
+    )
+    _mock_search(
+        mocker,
+        {
+            "results": [
+                {
+                    "title": "Code",
+                    "url": "https://example.com/code",
+                    "raw_content": raw_content,
+                }
+            ]
+        },
+    )
+
+    result = search_web("example story")
+
+    assert (
+        "```python\n"
+        "def add(a, b):\n"
+        "    return a + b   # keep indentation and spacing\n"
+        "```"
+    ) in result
+
+
+def test_search_web_preserves_nested_list_indentation(mock_tavily_key, mocker):
+    _mock_search(
+        mocker,
+        {
+            "results": [
+                {
+                    "title": "List",
+                    "url": "https://example.com/list",
+                    "raw_content": "- top\n    - nested\n",
+                }
+            ]
+        },
+    )
+
+    result = search_web("example story")
+
+    assert "- top\n    - nested" in result
+
+
+def test_search_web_caps_results_at_five(mock_tavily_key, mocker):
+    results = [
+        {
+            "title": f"Source {index}",
+            "url": f"https://example.com/{index}",
+            "content": f"Body {index}.",
+        }
+        for index in range(8)
+    ]
+    _mock_search(mocker, {"results": results})
+
+    result = search_web("example story")
+
+    assert result.count("Title:") == 5
+    assert "Source 4" in result
+    assert "Source 5" not in result
+
+
+def test_search_web_does_not_leak_tavily_metadata(mock_tavily_key, mocker):
+    _mock_search(
+        mocker,
+        {
+            "results": [
+                {
+                    "title": "Metadata",
+                    "url": "https://example.com/meta",
+                    "content": "Body.",
+                    "score": 0.95,
+                    "favicon": "https://example.com/favicon.ico",
+                    "published_date": "2025-01-01",
+                }
+            ],
+            "request_id": "req-123",
+            "response_time": 0.42,
+        },
+    )
+
+    result = search_web("example story")
+
+    assert "score" not in result
+    assert "favicon" not in result
+    assert "published_date" not in result
+    assert "request_id" not in result
+    assert "response_time" not in result
+
+
 # ---------------------------------------------------------------------------
 # _normalize_url
 # ---------------------------------------------------------------------------

@@ -33,10 +33,11 @@ from tavily.errors import TimeoutError as TavilyTimeoutError
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Tavily search: keep the request and the resulting evidence explicitly bounded.
+# Evidence contract: one block per source containing only Title / URL / Content.
 MAX_SEARCH_RESULTS = 5
-MAX_SEARCH_CONTENT_CHARS = 4000  # per source
-MAX_SEARCH_EVIDENCE_CHARS = 12000  # across all sources
-MIN_SEARCH_CONTENT_CHARS = 200  # skip fragments left by the total budget
+MAX_SEARCH_CONTENT_CHARS = 6000  # per-source content cap
+MAX_SEARCH_EVIDENCE_CHARS = 20000  # total evidence cap across all sources
+MIN_SEARCH_CONTENT_CHARS = 200  # stop when the remaining budget is too small
 
 # Per-run fetch cache — cleared via clear_fetch_cache() at the start of each run.
 _fetch_cache: dict[str, str] = {}
@@ -62,20 +63,56 @@ def _normalize_url(url: str) -> str:
     )
 
 
-def _clean_text(text: str, max_chars: int = 6000) -> str:
-    """Normalize whitespace while preserving paragraph and line structure.
+_FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
+_LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
 
-    Tabs and runs of spaces are collapsed, individual lines are stripped, and
-    runs of three or more newlines are reduced to one blank line. Newlines are
-    kept so Markdown headings, lists, and paragraph breaks survive.
+
+def _clean_text(text: str, max_chars: int = 6000) -> str:
+    """Normalize whitespace without destroying Markdown structure.
+
+    Headings, paragraphs, and list items are kept, and runs of blank lines are
+    reduced to a single blank line. Fenced code blocks (``` or ~~~) are
+    preserved verbatim so indentation and internal spacing survive. List item
+    indentation is also preserved so nested lists keep their hierarchy.
     """
     if not text:
         return ""
+
     text = text.replace("\r\n", "\n").replace("\r", "\n")
-    text = re.sub(r"[^\S\n]+", " ", text)
-    text = "\n".join(line.strip() for line in text.split("\n"))
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()[:max_chars]
+
+    lines: list[str] = []
+    in_fence = False
+    blank_run = 0
+
+    for raw_line in text.split("\n"):
+        if _FENCE_RE.match(raw_line):
+            in_fence = not in_fence
+            lines.append(raw_line.rstrip())
+            blank_run = 0
+            continue
+
+        if in_fence:
+            # Code content must keep its exact indentation and spacing.
+            lines.append(raw_line)
+            continue
+
+        if _LIST_ITEM_RE.match(raw_line):
+            indent = raw_line[: len(raw_line) - len(raw_line.lstrip())]
+            body = re.sub(r"[^\S\n]+", " ", raw_line.lstrip()).rstrip()
+            line = f"{indent}{body}"
+        else:
+            line = re.sub(r"[^\S\n]+", " ", raw_line).strip()
+
+        if not line:
+            blank_run += 1
+            if blank_run <= 1:
+                lines.append("")
+            continue
+
+        blank_run = 0
+        lines.append(line)
+
+    return "\n".join(lines).strip()[:max_chars]
 
 
 def _clean_title(text: str, max_chars: int = 200) -> str:
@@ -83,6 +120,23 @@ def _clean_title(text: str, max_chars: int = 200) -> str:
     if not text:
         return ""
     return re.sub(r"\s+", " ", text).strip()[:max_chars]
+
+
+def _select_search_content(result: dict) -> str:
+    """Return the best available text for one Tavily search result.
+
+    Full page content (``raw_content``) is preferred because it carries more
+    evidence than the short NLP snippet. Tavily's ``content`` field is used
+    only as a fallback when ``raw_content`` is missing or whitespace-only.
+    Only the three contract fields (title, url, content) ever leave this
+    module; Tavily-specific metadata such as ``score`` or ``favicon`` is not
+    returned.
+    """
+    raw_content = result.get("raw_content")
+    if isinstance(raw_content, str) and raw_content.strip():
+        return raw_content
+    fallback = result.get("content")
+    return fallback if isinstance(fallback, str) else ""
 
 
 @traceable(run_type="tool", name="search_web")
@@ -130,13 +184,7 @@ def search_web(query: str) -> str:
         if not title or not link:
             continue
 
-        # Prefer full raw content; fall back to Tavily's short content field.
-        raw_content = result.get("raw_content")
-        if isinstance(raw_content, str) and raw_content.strip():
-            content = raw_content
-        else:
-            fallback = result.get("content")
-            content = fallback if isinstance(fallback, str) else ""
+        content = _select_search_content(result)
 
         separator = 2 if entries else 0
         header = f"Title: {title}\nURL: {link}\nContent: "
