@@ -53,16 +53,17 @@ def health() -> dict[str, str]:
 @app.post("/api/research", response_model=SummaryResult)
 async def research(
     input_type: Annotated[str, Form()],
+    query: Annotated[str | None, Form()] = None,
     url: Annotated[str | None, Form()] = None,
     file: Annotated[UploadFile | None, File()] = None,
 ) -> SummaryResult:
-    """Run the research workflow for a URL or an uploaded text file.
+    """Run the research workflow for a topic, URL, or uploaded text file.
 
     The request is converted into the single free-form string that
     ``run_agent`` already accepts, so the API does not duplicate the
     workflow.
     """
-    request = await _build_request(input_type, url, file)
+    request = await _build_request(input_type, query, url, file)
     return await run_in_threadpool(_execute, request)
 
 
@@ -102,18 +103,31 @@ def _execute(request: str) -> SummaryResult:
 
 async def _build_request(
     input_type: str,
+    query: str | None,
     url: str | None,
     file: UploadFile | None,
 ) -> str:
     """Validate the request and return the free-form agent input string."""
+    if input_type == "topic":
+        return _validate_topic(query)
     if input_type == "url":
         return _validate_url(url)
     if input_type == "file":
         return await _save_upload(file)
     raise HTTPException(
         status_code=400,
-        detail="input_type must be 'url' or 'file'.",
+        detail="input_type must be 'topic', 'url', or 'file'.",
     )
+
+
+def _validate_topic(query: str | None) -> str:
+    """Return a validated research question or raise a client error."""
+    if not query or not query.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="A research question is required when input_type is 'topic'.",
+        )
+    return query.strip()
 
 
 def _validate_url(url: str | None) -> str:

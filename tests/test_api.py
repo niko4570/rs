@@ -47,6 +47,18 @@ def test_health():
 # ---------------------------------------------------------------------------
 
 
+def test_valid_topic_request(mock_run_agent):
+    mock_run_agent.return_value = _summary()
+
+    response = client.post(
+        "/api/research",
+        data={"input_type": "topic", "query": "What are the main security risks of ERC-4337?"},
+    )
+
+    assert response.status_code == 200
+    mock_run_agent.assert_called_once_with("What are the main security risks of ERC-4337?")
+
+
 def test_valid_url_request(mock_run_agent):
     mock_run_agent.return_value = _summary()
 
@@ -88,6 +100,22 @@ def test_valid_file_request(mock_run_agent, tmp_path):
 def test_missing_input_type_returns_422():
     response = client.post("/api/research", data={})
     assert response.status_code == 422
+
+
+def test_topic_without_value(mock_run_agent):
+    response = client.post("/api/research", data={"input_type": "topic"})
+    assert response.status_code == 400
+    assert "research question" in response.json()["detail"].lower()
+    mock_run_agent.assert_not_called()
+
+
+def test_topic_with_blank_value(mock_run_agent):
+    response = client.post(
+        "/api/research",
+        data={"input_type": "topic", "query": "   \n"},
+    )
+    assert response.status_code == 400
+    mock_run_agent.assert_not_called()
 
 
 def test_url_without_value(mock_run_agent):
@@ -145,7 +173,7 @@ def test_empty_file(mock_run_agent):
 def test_unknown_input_type(mock_run_agent):
     response = client.post(
         "/api/research",
-        data={"input_type": "topic", "url": "https://example.com"},
+        data={"input_type": "document", "url": "https://example.com"},
     )
     assert response.status_code == 400
     mock_run_agent.assert_not_called()

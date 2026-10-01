@@ -186,10 +186,11 @@ GET  /api/health
 POST /api/research   (multipart/form-data)
 ```
 
-`POST /api/research` accepts either:
+`POST /api/research` accepts one of:
 
+- `input_type=topic` with a `query` field (a research question)
 - `input_type=url` with a `url` field (http/https)
-- `input_type=file` with a `file` upload (`.txt` or `.md`)
+- `input_type=file` with a `file` upload (`.txt`, `.md`, or `.markdown`)
 
 Uploaded files are written to `.uploads/` (gitignored) and read by the
 agent's existing local-file tool. The response is the structured
@@ -205,6 +206,51 @@ agent's existing local-file tool. The response is the structured
 ```
 
 CORS is enabled for the local Vite dev origin (`http://localhost:5173`).
+
+## Local Web UI
+
+A React + Vite frontend lives in `frontend/`. It supports all three input
+workflows (research question, URL, local file) and renders the backend's
+`SummaryResult` as a research document.
+
+Backend (terminal 1):
+
+```bash
+uvicorn research_summarizer.api:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Frontend (terminal 2):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Then open:
+
+```text
+http://localhost:5173
+```
+
+The frontend reads the backend URL from `VITE_API_BASE_URL` and defaults to
+`http://127.0.0.1:8000`. Copy `frontend/.env.example` to `frontend/.env` to
+override it.
+
+### Make targets
+
+Common tasks are wrapped in the root `Makefile`:
+
+```bash
+make install   # create venv + install backend and frontend deps (once)
+make dev       # start backend (:8000) and frontend (:5173) together
+make test      # run the backend test suite
+make lint      # run Ruff
+make check     # lint + backend tests + frontend build
+```
+
+`make dev` starts both servers and stops both on Ctrl+C. Run `make help` to
+list every target.
 
 ## Normal Development Workflow
 
