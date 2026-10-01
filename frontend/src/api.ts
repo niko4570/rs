@@ -6,9 +6,9 @@ const API_BASE_URL =
 const STATUS_MESSAGES: Record<number, string> = {
   400: "Could not process this input. Check that the URL is valid and try again.",
   413: "The file is too large. The maximum size is 10 MB.",
+  500: "Something went wrong while processing this request. Please try again.",
   502: "The research service could not produce a valid result. Please try again.",
   503: "The research service is not configured. Check the local API configuration.",
-  500: "Something went wrong while processing this request. Please try again.",
 };
 
 async function readErrorMessage(response: Response): Promise<string> {
@@ -18,10 +18,10 @@ async function readErrorMessage(response: Response): Promise<string> {
       typeof data === "object" &&
       data !== null &&
       "detail" in data &&
-      typeof (data as { detail?: unknown }).detail === "string" &&
-      (data as { detail: string }).detail.trim()
+      typeof data.detail === "string" &&
+      data.detail.trim()
     ) {
-      return (data as { detail: string }).detail;
+      return data.detail;
     }
   } catch {
     // Response body was not JSON; fall through to the status message.

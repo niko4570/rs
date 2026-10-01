@@ -1,4 +1,4 @@
-import { useRef, type ChangeEvent, type MouseEvent } from "react";
+import { type ChangeEvent, type MouseEvent } from "react";
 
 type Props = {
   file: File | null;
@@ -11,8 +11,6 @@ export default function FileDropzone({
   onSelect,
   disabled = false,
 }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     onSelect(event.target.files?.[0] ?? null);
     // Reset so selecting the same file again still fires a change event.
@@ -33,7 +31,6 @@ export default function FileDropzone({
           {file ? file.name.toUpperCase() : "ADD FILE"}
         </span>
         <input
-          ref={inputRef}
           type="file"
           accept=".txt,.md,.markdown"
           disabled={disabled}

@@ -15,9 +15,7 @@ export default function ProcessingView({ inputName }: Props) {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setActive((current) =>
-        current < STEPS.length - 1 ? current + 1 : current,
-      );
+      setActive((current) => Math.min(current + 1, STEPS.length - 1));
     }, 1400);
     return () => window.clearInterval(timer);
   }, []);
