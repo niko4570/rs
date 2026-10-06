@@ -1,7 +1,7 @@
 """Tests for CLI formatting — verifies CLI compatibility without an LLM."""
 
 from research_summarizer.cli import _format_result
-from research_summarizer.models import Source, SummaryResult
+from research_summarizer.models import BulletCitation, Source, SummaryResult
 
 
 def test_format_result_has_all_sections():
@@ -9,6 +9,11 @@ def test_format_result_has_all_sections():
         summary_bullets=["Point 1", "Point 2", "Point 3", "Point 4"],
         key_details="Some key facts.",
         sources=[Source(title="Example", url="https://example.com/article")],
+        citations=[BulletCitation(
+            bullet_index=0,
+            source_url="https://example.com/article",
+            excerpt="Evidence for point one.",
+        )],
         caveats=["Limited to a single source"],
     )
 
@@ -16,6 +21,7 @@ def test_format_result_has_all_sections():
 
     assert "Summary:" in output
     assert "- Point 1" in output
+    assert "Evidence (https://example.com/article): Evidence for point one." in output
     assert "Key details: Some key facts." in output
     assert "Sources:" in output
     assert "Example (https://example.com/article)" in output

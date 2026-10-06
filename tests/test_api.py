@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from research_summarizer.api import app
-from research_summarizer.models import Source, SummaryResult
+from research_summarizer.models import BulletCitation, Source, SummaryResult
 from research_summarizer.parser import ParseError
 
 client = TestClient(app)
@@ -21,6 +21,14 @@ def _summary() -> SummaryResult:
         summary_bullets=["Point 1", "Point 2", "Point 3", "Point 4"],
         key_details="Some key facts.",
         sources=[Source(title="Example", url="https://example.com/article")],
+        citations=[
+            BulletCitation(
+                bullet_index=index,
+                source_url="https://example.com/article",
+                excerpt="Some key facts.",
+            )
+            for index in range(4)
+        ],
         caveats=["Limited to a single source"],
     )
 
@@ -269,7 +277,9 @@ def test_response_serialization(mock_run_agent):
 
     assert response.status_code == 200
     data = response.json()
-    assert set(data.keys()) == {"summary_bullets", "key_details", "sources", "caveats"}
+    assert set(data.keys()) == {
+        "summary_bullets", "key_details", "sources", "caveats", "citations"
+    }
     assert data["summary_bullets"] == ["Point 1", "Point 2", "Point 3", "Point 4"]
     assert data["key_details"] == "Some key facts."
     assert data["sources"] == [
@@ -280,6 +290,11 @@ def test_response_serialization(mock_run_agent):
         }
     ]
     assert data["caveats"] == ["Limited to a single source"]
+    assert data["citations"][0] == {
+        "bullet_index": 0,
+        "source_url": "https://example.com/article",
+        "excerpt": "Some key facts.",
+    }
 
 
 def test_response_serialization_is_valid_json(mock_run_agent):

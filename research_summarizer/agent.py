@@ -25,6 +25,7 @@ load_dotenv()
 from langsmith import traceable
 
 from research_summarizer.evidence import (
+    FILE_ERROR_PREFIX,
     EvidenceResult,
     acquire_evidence,
     clear_fetch_cache,
@@ -83,16 +84,30 @@ def run_agent(
         selected = _acquire_search_evidence(request, tool_input, on_progress)
         evidence = format_evidence(selected)
         allowed_urls = {item.url for item in selected.items}
+        citation_evidence: dict[str | None, str] = {}
+        for item in selected.items:
+            citation_evidence[item.url] = (
+                f"{citation_evidence[item.url]}\n{item.content}"
+                if item.url in citation_evidence else item.content
+            )
     else:
         evidence = acquire_evidence(action, tool_input)
         allowed_urls = (
             {tool_input} if action == "fetch" and not evidence.startswith("[FETCH_ERROR]") else set()
         )
+        if action == "fetch" and allowed_urls:
+            citation_evidence = {tool_input: evidence.split("\nText: ", 1)[-1]}
+        elif action == "read_file" and evidence.strip() and not evidence.startswith(FILE_ERROR_PREFIX):
+            citation_evidence = {None: evidence}
+        else:
+            citation_evidence = {}
 
     _progress(on_progress, "summarize", "Summarizing evidence...")
     raw_answer = summarize_evidence(request, evidence, model)
 
-    result = parse_summary(raw_answer, allowed_urls=allowed_urls)
+    result = parse_summary(
+        raw_answer, allowed_urls=allowed_urls, citation_evidence=citation_evidence
+    )
 
     _progress(on_progress, "done", "Done")
     return result

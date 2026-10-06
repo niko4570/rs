@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-PROMPT_VERSION = "2026-06"
+PROMPT_VERSION = "2026-10"
 
 
 SUMMARIZE_SYSTEM_PROMPT = f"""You are the synthesis layer for a research summarizer.
@@ -26,6 +26,9 @@ Return exactly one JSON object matching this schema:
   "sources": [
     {{"title": "Page Title", "url": "https://...", "snippet_used": null}}
   ],
+  "citations": [
+    {{"bullet_index": 0, "source_url": "https://...", "excerpt": "exact short passage from that source"}}
+  ],
   "caveats": ["specific caveat 1", "specific caveat 2"]
 }}
 
@@ -33,6 +36,10 @@ RULES
 - `summary_bullets` must contain 4-7 items.
 - `sources` must only include sources actually present in the evidence.
 - If the evidence has no source URL (for example, a local file or an acquisition error), return an empty `sources` list.
+- When evidence is available, cite every summary bullet with at least one entry in `citations`. Use zero-based `bullet_index` values. More than one citation may support a bullet.
+- For a local file, set `source_url` to null. For web evidence, use the exact source URL and include it in `sources`.
+- Copy each `excerpt` verbatim from the matching source content (maximum 500 characters). Do not invent or paraphrase excerpts.
+- If acquisition failed or no relevant evidence was found, return an empty `citations` list and use the bullets and caveats to explain the limitation.
 - `caveats` must be specific, not generic filler like "may be incomplete".
 - Return only the JSON object. Do not wrap it in markdown fences or add commentary.
 """

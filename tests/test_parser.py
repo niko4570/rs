@@ -108,6 +108,8 @@ class TestParseSummaryRejects:
     def test_rejects_source_when_evidence_has_no_urls(self):
         with pytest.raises(ParseError, match="Source validation failed"):
             parse_summary(_VALID_JSON, allowed_urls=set())
+
+
     def test_rejects_too_few_bullets(self):
         data = {
             "summary_bullets": ["a", "b", "c"],
@@ -159,3 +161,62 @@ class TestParseSummaryRejects:
     def test_rejects_non_json_response(self):
         with pytest.raises(ParseError, match="JSON extraction failed"):
             parse_summary("Just a regular text response, not JSON at all.")
+
+
+def _cited_result(url: str | None = "https://example.com", excerpt: str = "relevant text"):
+    data = json.loads(_VALID_JSON)
+    data["sources"] = [{"title": "Example", "url": url}] if url else []
+    data["citations"] = [
+        {"bullet_index": index, "source_url": url, "excerpt": excerpt}
+        for index in range(4)
+    ]
+    return data
+
+
+def test_validates_each_bullet_against_its_source_content():
+    data = _cited_result()
+    result = parse_summary(
+        json.dumps(data),
+        allowed_urls={"https://example.com"},
+        citation_evidence={"https://example.com": "Some relevant  text appears here."},
+    )
+    assert len(result.citations) == 4
+
+
+def test_rejects_missing_bullet_citation_when_evidence_exists():
+    data = _cited_result()
+    data["citations"] = data["citations"][:3]
+    with pytest.raises(ParseError, match="every bullet needs a citation"):
+        parse_summary(json.dumps(data), citation_evidence={"https://example.com": "relevant text"})
+
+
+def test_rejects_excerpt_from_a_different_source():
+    data = _cited_result(excerpt="only in other source")
+    with pytest.raises(ParseError, match="excerpt is absent"):
+        parse_summary(json.dumps(data), citation_evidence={"https://example.com": "relevant text"})
+
+
+def test_rejects_citation_to_source_not_listed_in_result():
+    data = _cited_result()
+    data["sources"] = []
+    with pytest.raises(ParseError, match="absent from sources"):
+        parse_summary(json.dumps(data), citation_evidence={"https://example.com": "relevant text"})
+
+
+def test_rejects_citation_with_invalid_bullet_index():
+    data = _cited_result()
+    data["citations"][0]["bullet_index"] = 4
+    with pytest.raises(ParseError, match="bullet index is out of range"):
+        parse_summary(json.dumps(data), citation_evidence={"https://example.com": "relevant text"})
+
+
+def test_local_file_citations_have_no_web_url():
+    data = _cited_result(url=None, excerpt="Research notes")
+    result = parse_summary(json.dumps(data), citation_evidence={None: "Research notes here."})
+    assert all(citation.source_url is None for citation in result.citations)
+
+
+def test_no_evidence_requires_no_citations():
+    data = _cited_result()
+    with pytest.raises(ParseError, match="source is absent"):
+        parse_summary(json.dumps(data), citation_evidence={})

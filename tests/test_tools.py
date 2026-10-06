@@ -53,7 +53,7 @@ def test_rejects_unsupported_extension_inside_project(temp_project_root):
 def test_reports_invalid_utf8_inside_project(temp_project_root):
     source = temp_project_root / "broken.md"
     source.write_bytes(b"\xff\xfe")
-    assert read_text_file("broken.md") == "File is not valid UTF-8 text."
+    assert read_text_file("broken.md") == "[FILE_ERROR] File is not valid UTF-8 text."
 
 
 def test_accepts_markdown_extension_inside_project(temp_project_root):

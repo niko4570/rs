@@ -33,6 +33,11 @@ requests skip Jev.
 The API keeps its explicit input type when dispatching; the CLI infers a route
 from free-form input. Returned source URLs are checked against the evidence
 actually sent to synthesis. Local-file results have no web source URLs.
+Each summary bullet includes a citation with a short excerpt copied from its
+source. The parser checks that every bullet has a citation when evidence is
+available, and that each excerpt occurs in the cited source. For local files,
+the citation identifies the file without adding a web URL. The UI expands
+citations inline; the CLI prints them beneath each bullet.
 
 ## Installation
 
@@ -204,6 +209,7 @@ agent's existing local-file tool. The response is the structured
   "summary_bullets": ["..."],
   "key_details": "...",
   "sources": [{"title": "...", "url": "...", "snippet_used": null}],
+  "citations": [{"bullet_index": 0, "source_url": "...", "excerpt": "..."}],
   "caveats": ["..."]
 }
 ```

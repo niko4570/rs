@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 
 from pydantic import ValidationError
 
@@ -42,7 +42,11 @@ def _extract_json(text: str) -> str:
     raise ParseError("Could not extract JSON object from response.", raw_text=text)
 
 
-def parse_summary(raw_answer: str, allowed_urls: Collection[str] | None = None) -> SummaryResult:
+def parse_summary(
+    raw_answer: str,
+    allowed_urls: Collection[str] | None = None,
+    citation_evidence: Mapping[str | None, str] | None = None,
+) -> SummaryResult:
     """Extract and validate a SummaryResult from raw model output."""
     try:
         json_text = _extract_json(raw_answer)
@@ -62,4 +66,29 @@ def parse_summary(raw_answer: str, allowed_urls: Collection[str] | None = None) 
                 "Source validation failed: response cited a URL absent from the evidence.",
                 raw_text=json_text,
             )
+    if citation_evidence is not None:
+        _validate_citations(result, citation_evidence, json_text)
     return result
+
+
+def _validate_citations(
+    result: SummaryResult, evidence: Mapping[str | None, str], raw_text: str
+) -> None:
+    """Check coverage, source identity, and excerpt presence without another model call."""
+    cited_bullets: set[int] = set()
+    listed_urls = {source.url for source in result.sources}
+    for citation in result.citations:
+        if citation.bullet_index >= len(result.summary_bullets):
+            raise ParseError("Citation validation failed: bullet index is out of range.", raw_text)
+        if citation.source_url not in evidence:
+            raise ParseError("Citation validation failed: source is absent from the evidence.", raw_text)
+        if citation.source_url is not None and citation.source_url not in listed_urls:
+            raise ParseError("Citation validation failed: source is absent from sources.", raw_text)
+        excerpt = " ".join(citation.excerpt.split())
+        content = " ".join(evidence[citation.source_url].split())
+        if excerpt not in content:
+            raise ParseError("Citation validation failed: excerpt is absent from the source.", raw_text)
+        cited_bullets.add(citation.bullet_index)
+
+    if evidence and cited_bullets != set(range(len(result.summary_bullets))):
+        raise ParseError("Citation validation failed: every bullet needs a citation.", raw_text)

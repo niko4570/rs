@@ -23,9 +23,48 @@ export default function ResultView({ inputName, result, onReset }: Props) {
       <div className="section">
         <h2>Summary</h2>
         <ul className="bullets">
-          {result.summary_bullets.map((bullet, index) => (
-            <li key={index}>{bullet}</li>
-          ))}
+          {result.summary_bullets.map((bullet, index) => {
+            const citations = result.citations.filter(
+              (citation) => citation.bullet_index === index,
+            );
+            return (
+              <li key={index}>
+                <span>{bullet}</span>
+                {citations.length > 0 && (
+                  <div className="citations">
+                    {citations.map((citation, citationIndex) => {
+                      const sourceIndex = result.sources.findIndex(
+                        (source) => source.url === citation.source_url,
+                      );
+                      const label =
+                        sourceIndex >= 0
+                          ? `Source ${sourceIndex + 1}`
+                          : "Local file";
+                      return (
+                        <details
+                          className="citation"
+                          key={`${citation.source_url ?? "file"}-${citationIndex}`}
+                        >
+                          <summary>{label} · Evidence</summary>
+                          <blockquote>{citation.excerpt}</blockquote>
+                          {sourceIndex >= 0 && (
+                            <a
+                              href={result.sources[sourceIndex].url}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              {result.sources[sourceIndex].title ??
+                                result.sources[sourceIndex].url}
+                            </a>
+                          )}
+                        </details>
+                      );
+                    })}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </div>
 

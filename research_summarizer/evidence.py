@@ -34,6 +34,7 @@ from tavily.errors import TimeoutError as TavilyTimeoutError
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SUPPORTED_TEXT_EXTENSIONS = frozenset({".txt", ".md", ".markdown"})
+FILE_ERROR_PREFIX = "[FILE_ERROR]"
 
 # Tavily search: keep the request and the resulting evidence explicitly bounded.
 # Evidence contract: one block per source containing only Title / URL / Content.
@@ -316,18 +317,18 @@ def read_text_file(path: str) -> str:
     try:
         file_path.relative_to(PROJECT_ROOT)
     except ValueError:
-        return "Refusing to read outside the current project folder."
+        return f"{FILE_ERROR_PREFIX} Refusing to read outside the current project folder."
 
     if file_path.suffix.lower() not in SUPPORTED_TEXT_EXTENSIONS:
-        return "Unsupported file type. Only .txt, .md, and .markdown files are supported."
+        return f"{FILE_ERROR_PREFIX} Unsupported file type. Only .txt, .md, and .markdown files are supported."
 
     if not file_path.exists() or not file_path.is_file():
-        return f"File not found: {path}"
+        return f"{FILE_ERROR_PREFIX} File not found: {path}"
 
     try:
         return _clean_text(file_path.read_text(encoding="utf-8"), 10000)
     except UnicodeDecodeError:
-        return "File is not valid UTF-8 text."
+        return f"{FILE_ERROR_PREFIX} File is not valid UTF-8 text."
 
 
 def acquire_evidence(action: str, tool_input: str) -> str:

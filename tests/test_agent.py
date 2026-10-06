@@ -19,11 +19,15 @@ def _evidence_result(*items: EvidenceItem) -> EvidenceResult:
     return EvidenceResult(items=tuple(items))
 
 
-def _summary_json(url: str | None = None) -> str:
+def _summary_json(url: str | None = None, excerpt: str | None = None) -> str:
     return json.dumps({
         "summary_bullets": ["Point 1", "Point 2", "Point 3", "Point 4"],
         "key_details": "Some facts.",
         "sources": [{"title": "Source", "url": url}] if url else [],
+        "citations": [
+            {"bullet_index": index, "source_url": url, "excerpt": excerpt}
+            for index in range(4)
+        ] if excerpt else [],
         "caveats": ["Limited to a single source"],
     })
 
@@ -76,7 +80,7 @@ class TestResolveAction:
 
 class TestRunAgent:
     def test_url_flow_fetches_then_summarizes(self):
-        model = _mock_model(_summary_json("https://example.com/article"))
+        model = _mock_model(_summary_json("https://example.com/article", "content"))
 
         with patch("research_summarizer.agent.build_model", return_value=model), \
              patch("research_summarizer.evidence.fetch_url",
@@ -88,7 +92,7 @@ class TestRunAgent:
         assert result.sources[0].url == "https://example.com/article"
 
     def test_file_flow_reads_then_summarizes(self):
-        model = _mock_model(_summary_json())
+        model = _mock_model(_summary_json(excerpt="File content."))
 
         with patch("research_summarizer.agent.build_model", return_value=model), \
              patch("research_summarizer.evidence.read_text_file",
@@ -97,9 +101,11 @@ class TestRunAgent:
 
         mock_read.assert_called_once_with("README.md")
         assert isinstance(result, SummaryResult)
+        assert result.citations[0].source_url is None
+        assert result.citations[0].excerpt == "File content."
 
     def test_topic_flow_searches_then_summarizes(self):
-        model = _mock_model(_summary_json("https://example.com/story"))
+        model = _mock_model(_summary_json("https://example.com/story", "..."))
         item = _item("R", "...")
 
         with patch("research_summarizer.agent.build_model", return_value=model), \
@@ -111,6 +117,18 @@ class TestRunAgent:
 
         mock_search.assert_called_once_with("latest AI news")
         assert isinstance(result, SummaryResult)
+        assert {citation.bullet_index for citation in result.citations} == set(range(4))
+
+    def test_duplicate_search_url_can_cite_either_selected_excerpt(self):
+        first = _item("First", "First passage", id_="S1")
+        second = _item("Second", "Second passage", id_="S2")
+        selected = _evidence_result(first, second)
+        model = _mock_model(_summary_json(first.url, "First passage"))
+        with patch("research_summarizer.agent.build_model", return_value=model), \
+             patch("research_summarizer.agent.search_web_items", return_value=selected), \
+             patch("research_summarizer.agent.judge_evidence", return_value=selected):
+            result = run_agent("topic")
+        assert result.citations[0].excerpt == "First passage"
 
     def test_search_selected_evidence_is_passed_to_summarizer(self):
         kept = _item("Keep", "Full substantive body used for synthesis.")
@@ -123,7 +141,8 @@ class TestRunAgent:
              patch("research_summarizer.agent.judge_evidence",
                    return_value=selected) as mock_judge, \
              patch("research_summarizer.agent.summarize_evidence",
-                   return_value=_summary_json("https://example.com/story")) as mock_summarize:
+                   return_value=_summary_json("https://example.com/story",
+                                              "Full substantive body")) as mock_summarize:
             result = run_agent("latest AI news")
 
         mock_judge.assert_called_once_with("latest AI news", acquired.items)
@@ -149,14 +168,22 @@ class TestRunAgent:
         mock_judge.assert_not_called()
         assert mock_summarize.call_args.args[1] == "No search results found."
 
-    def test_fetch_and_file_paths_bypass_jev(self):
+    def test_empty_file_can_return_uncertainty_without_citations(self):
         model = _mock_model(_summary_json())
+        with patch("research_summarizer.agent.build_model", return_value=model), \
+             patch("research_summarizer.evidence.read_text_file", return_value=""):
+            result = run_agent("README.md")
+        assert result.citations == []
+
+    def test_fetch_and_file_paths_bypass_jev(self):
         cases = (
-            ("https://example.com/article", "research_summarizer.evidence.fetch_url"),
-            ("README.md", "research_summarizer.evidence.read_text_file"),
+            ("https://example.com/article", "research_summarizer.evidence.fetch_url",
+             "https://example.com/article"),
+            ("README.md", "research_summarizer.evidence.read_text_file", None),
         )
 
-        for request, patch_target in cases:
+        for request, patch_target, url in cases:
+            model = _mock_model(_summary_json(url, "content"))
             with patch("research_summarizer.agent.build_model", return_value=model), \
                  patch(patch_target, return_value="content"), \
                  patch("research_summarizer.agent.judge_evidence") as mock_judge:
@@ -164,7 +191,7 @@ class TestRunAgent:
             mock_judge.assert_not_called()
 
     def test_search_flow_reports_judging_progress(self):
-        model = _mock_model(_summary_json())
+        model = _mock_model(_summary_json("https://example.com/story", "body"))
         item = _item("R", "body")
         stages = []
 
@@ -180,7 +207,7 @@ class TestRunAgent:
         assert stages[-1] == "done"
 
     def test_run_agent_makes_exactly_one_llm_call(self):
-        model = _mock_model(_summary_json("https://example.com/story"))
+        model = _mock_model(_summary_json("https://example.com/story", "body"))
         bound = model.bind.return_value
         item = _item("R", "body")
 
@@ -194,7 +221,7 @@ class TestRunAgent:
         assert bound.invoke.call_count == 1
 
     def test_progress_callback_invoked(self):
-        model = _mock_model(_summary_json())
+        model = _mock_model(_summary_json("https://example.com", "content"))
         stages = []
 
         with patch("research_summarizer.agent.build_model", return_value=model), \

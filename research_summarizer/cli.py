@@ -12,8 +12,12 @@ from research_summarizer.parser import ParseError
 def _format_result(result) -> str:
     """Format a SummaryResult for CLI display."""
     lines = ["Summary:"]
-    for bullet in result.summary_bullets:
+    for bullet_index, bullet in enumerate(result.summary_bullets):
         lines.append(f"  - {bullet}")
+        for citation in result.citations:
+            if citation.bullet_index == bullet_index:
+                source = citation.source_url or "Local file"
+                lines.append(f"    Evidence ({source}): {citation.excerpt}")
 
     lines.append("")
     lines.append(f"Key details: {result.key_details}")

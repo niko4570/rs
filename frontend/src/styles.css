@@ -365,6 +365,38 @@ input[type="file"] {
   font-size: 16px;
 }
 
+.citations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 8px;
+}
+
+.citation {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+.citation summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.citation blockquote {
+  max-width: 620px;
+  margin: 9px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--border);
+  color: #d2cfc8;
+  overflow-wrap: anywhere;
+}
+
+.citation a {
+  color: var(--accent);
+  overflow-wrap: anywhere;
+}
+
 .details {
   color: #d2cfc8;
   font-size: 16px;

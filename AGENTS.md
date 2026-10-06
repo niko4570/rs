@@ -169,10 +169,12 @@ The summarizer must not perform searches, URL fetching, file access, evidence se
 
 Owns deterministic extraction, JSON parsing, and Pydantic validation. Invalid output should raise or return a clear parsing/validation error. Do not add another LLM call to repair malformed output.
 The workflow must also reject source URLs that were not present in the selected or fetched evidence; local-file and failed-acquisition results have no permitted source URLs.
+When evidence is available, validate one or more citations for every summary bullet. Each citation must refer to a listed web source or the local file, and its short excerpt must occur in the matching acquired evidence. Empty or failed acquisition requires no citations.
 
 ### `research_summarizer/models.py`
 
 Contains the Pydantic data models, including `SummaryResult`. Keep schemas separate from workflow logic.
+`SummaryResult.citations` adds zero-based bullet references, source URLs (null for local files), and bounded evidence excerpts while preserving `summary_bullets` as strings.
 
 ### `research_summarizer/prompts.py`
 
@@ -183,6 +185,7 @@ Prompts must instruct the model to:
 - Distinguish evidence from inference
 - Report uncertainty and conflicting sources
 - Include only sources present in the evidence
+- Cite each summary bullet with an exact short excerpt from its source when evidence exists
 - Return the required JSON structure
 
 Prompts must not implement control flow that belongs in deterministic Python.
