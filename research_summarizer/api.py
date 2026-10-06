@@ -17,7 +17,7 @@ from openai import APIError
 from starlette.concurrency import run_in_threadpool
 
 from research_summarizer.agent import run_agent
-from research_summarizer.evidence import PROJECT_ROOT
+from research_summarizer.evidence import PROJECT_ROOT, SUPPORTED_TEXT_EXTENSIONS
 from research_summarizer.models import SummaryResult
 from research_summarizer.parser import ParseError
 
@@ -27,7 +27,6 @@ from research_summarizer.parser import ParseError
 _UPLOADS_DIR = PROJECT_ROOT / ".uploads"
 _UPLOADS_RELATIVE_DIR = ".uploads"
 
-_ALLOWED_EXTENSIONS = {".txt", ".md", ".markdown"}
 _MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 app = FastAPI(title="Research Summarizer API", version="0.1.0")
@@ -59,18 +58,18 @@ async def research(
 ) -> SummaryResult:
     """Run the research workflow for a topic, URL, or uploaded text file.
 
-    The request is converted into the single free-form string that
-    ``run_agent`` already accepts, so the API does not duplicate the
-    workflow.
+    The API passes its validated input and explicit route to the shared
+    workflow, so topic text is never reclassified by the CLI-style parser.
     """
     request = await _build_request(input_type, query, url, file)
-    return await run_in_threadpool(_execute, request)
+    action = {"topic": "search", "url": "fetch", "file": "read_file"}[input_type]
+    return await run_in_threadpool(_execute, request, action)
 
 
-def _execute(request: str) -> SummaryResult:
+def _execute(request: str, action: str) -> SummaryResult:
     """Call the Agent core and translate known failures into HTTP errors."""
     try:
-        return run_agent(request)
+        return run_agent(request, action=action)
     except ParseError as exc:
         raise HTTPException(
             status_code=502,
@@ -87,7 +86,7 @@ def _execute(request: str) -> SummaryResult:
             ) from exc
         raise HTTPException(
             status_code=502,
-            detail="Agent planning failed.",
+            detail="Research request failed.",
         ) from exc
     except APIError as exc:
         raise HTTPException(
@@ -107,7 +106,7 @@ async def _build_request(
     url: str | None,
     file: UploadFile | None,
 ) -> str:
-    """Validate the request and return the free-form agent input string."""
+    """Validate the request and return the input for the chosen route."""
     if input_type == "topic":
         return _validate_topic(query)
     if input_type == "url":
@@ -162,12 +161,12 @@ async def _save_upload(file: UploadFile | None) -> str:
 
     filename = file.filename or ""
     extension = Path(filename).suffix.lower()
-    if extension not in _ALLOWED_EXTENSIONS:
+    if extension not in SUPPORTED_TEXT_EXTENSIONS:
         raise HTTPException(
             status_code=400,
             detail=(
                 f"Unsupported file type '{extension or 'unknown'}'. "
-                "Only .txt and .md files are supported."
+                "Only .txt, .md, and .markdown files are supported."
             ),
         )
 
@@ -196,4 +195,4 @@ async def _save_upload(file: UploadFile | None) -> str:
     safe_name = f"{uuid.uuid4().hex}{extension}"
     (_UPLOADS_DIR / safe_name).write_bytes(content)
 
-    return f"Summarize the local file: {_UPLOADS_RELATIVE_DIR}/{safe_name}"
+    return f"{_UPLOADS_RELATIVE_DIR}/{safe_name}"

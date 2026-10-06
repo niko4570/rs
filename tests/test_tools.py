@@ -42,6 +42,33 @@ def test_resolves_relative_paths(temp_project_root):
     assert "Relative path content." in result
 
 
+def test_rejects_unsupported_extension_inside_project(temp_project_root):
+    source = temp_project_root / "secret.json"
+    source.write_text('{"private": true}', encoding="utf-8")
+    result = read_text_file("secret.json")
+    assert "Unsupported file type" in result
+    assert "private" not in result
+
+
+def test_reports_invalid_utf8_inside_project(temp_project_root):
+    source = temp_project_root / "broken.md"
+    source.write_bytes(b"\xff\xfe")
+    assert read_text_file("broken.md") == "File is not valid UTF-8 text."
+
+
+def test_accepts_markdown_extension_inside_project(temp_project_root):
+    source = temp_project_root / "notes.markdown"
+    source.write_text("Markdown notes.", encoding="utf-8")
+    assert read_text_file("notes.markdown") == "Markdown notes."
+
+
+def test_fetch_rejects_non_http_url_without_network(mocker):
+    get = mocker.patch("research_summarizer.evidence.requests.get")
+    result = fetch_url("file:///etc/passwd")
+    assert result.startswith("[FETCH_ERROR] Invalid URL")
+    get.assert_not_called()
+
+
 # ---------------------------------------------------------------------------
 # search_web
 # ---------------------------------------------------------------------------

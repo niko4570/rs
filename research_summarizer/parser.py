@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Collection
 
 from pydantic import ValidationError
 
@@ -41,7 +42,7 @@ def _extract_json(text: str) -> str:
     raise ParseError("Could not extract JSON object from response.", raw_text=text)
 
 
-def parse_summary(raw_answer: str) -> SummaryResult:
+def parse_summary(raw_answer: str, allowed_urls: Collection[str] | None = None) -> SummaryResult:
     """Extract and validate a SummaryResult from raw model output."""
     try:
         json_text = _extract_json(raw_answer)
@@ -50,6 +51,15 @@ def parse_summary(raw_answer: str) -> SummaryResult:
         raise ParseError(f"JSON extraction failed: {exc}", raw_text=raw_answer) from exc
 
     try:
-        return SummaryResult.model_validate(data)
+        result = SummaryResult.model_validate(data)
     except ValidationError as exc:
         raise ParseError(f"Validation failed: {exc}", raw_text=json_text) from exc
+
+    if allowed_urls is not None:
+        unknown = {source.url for source in result.sources} - set(allowed_urls)
+        if unknown:
+            raise ParseError(
+                "Source validation failed: response cited a URL absent from the evidence.",
+                raw_text=json_text,
+            )
+    return result

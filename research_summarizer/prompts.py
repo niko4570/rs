@@ -32,6 +32,7 @@ Return exactly one JSON object matching this schema:
 RULES
 - `summary_bullets` must contain 4-7 items.
 - `sources` must only include sources actually present in the evidence.
+- If the evidence has no source URL (for example, a local file or an acquisition error), return an empty `sources` list.
 - `caveats` must be specific, not generic filler like "may be incomplete".
 - Return only the JSON object. Do not wrap it in markdown fences or add commentary.
 """

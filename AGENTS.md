@@ -87,6 +87,7 @@ Owns the top-level workflow:
 - Clear the per-run fetch cache
 - Build the configured model
 - Resolve the request deterministically
+- Honor an explicit input route supplied by the API; infer the route only for free-form CLI requests
 - Acquire evidence through the selected tool
 - Route search evidence through Jev selection before formatting
 - Call the summarizer exactly once
@@ -167,6 +168,7 @@ The summarizer must not perform searches, URL fetching, file access, evidence se
 ### `research_summarizer/parser.py`
 
 Owns deterministic extraction, JSON parsing, and Pydantic validation. Invalid output should raise or return a clear parsing/validation error. Do not add another LLM call to repair malformed output.
+The workflow must also reject source URLs that were not present in the selected or fetched evidence; local-file and failed-acquisition results have no permitted source URLs.
 
 ### `research_summarizer/models.py`
 

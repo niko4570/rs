@@ -60,6 +60,10 @@ class TestParseSummaryValid:
         assert result.sources[0].url == "https://example.com"
         assert result.sources[0].title == "Example Source"
 
+    def test_accepts_only_evidence_url_when_allowlist_supplied(self):
+        result = parse_summary(_VALID_JSON, allowed_urls={"https://example.com"})
+        assert result.sources[0].url == "https://example.com"
+
     def test_parses_inside_markdown_block(self):
         result = parse_summary(f"```json\n{_VALID_JSON}\n```")
         assert len(result.summary_bullets) == 4
@@ -97,6 +101,13 @@ class TestParseSummaryValid:
 
 
 class TestParseSummaryRejects:
+    def test_rejects_url_absent_from_evidence(self):
+        with pytest.raises(ParseError, match="Source validation failed"):
+            parse_summary(_VALID_JSON, allowed_urls={"https://other.example"})
+
+    def test_rejects_source_when_evidence_has_no_urls(self):
+        with pytest.raises(ParseError, match="Source validation failed"):
+            parse_summary(_VALID_JSON, allowed_urls=set())
     def test_rejects_too_few_bullets(self):
         data = {
             "summary_bullets": ["a", "b", "c"],

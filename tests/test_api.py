@@ -56,7 +56,19 @@ def test_valid_topic_request(mock_run_agent):
     )
 
     assert response.status_code == 200
-    mock_run_agent.assert_called_once_with("What are the main security risks of ERC-4337?")
+    mock_run_agent.assert_called_once_with(
+        "What are the main security risks of ERC-4337?", action="search"
+    )
+
+
+def test_topic_with_url_and_filename_stays_topic(mock_run_agent):
+    mock_run_agent.return_value = _summary()
+    query = "Compare https://example.com with README.md"
+    response = client.post(
+        "/api/research", data={"input_type": "topic", "query": query}
+    )
+    assert response.status_code == 200
+    mock_run_agent.assert_called_once_with(query, action="search")
 
 
 def test_valid_url_request(mock_run_agent):
@@ -68,7 +80,7 @@ def test_valid_url_request(mock_run_agent):
     )
 
     assert response.status_code == 200
-    mock_run_agent.assert_called_once_with("https://example.com/article")
+    mock_run_agent.assert_called_once_with("https://example.com/article", action="fetch")
 
 
 def test_valid_file_request(mock_run_agent, tmp_path):
@@ -84,8 +96,9 @@ def test_valid_file_request(mock_run_agent, tmp_path):
     assert response.status_code == 200
 
     request_arg = mock_run_agent.call_args.args[0]
-    assert request_arg.startswith("Summarize the local file: .uploads/")
+    assert request_arg.startswith(".uploads/")
     assert request_arg.endswith(".md")
+    assert mock_run_agent.call_args.kwargs == {"action": "read_file"}
 
     saved = list(uploads.glob("*.md"))
     assert len(saved) == 1
@@ -206,14 +219,14 @@ def test_missing_config_returns_503(mock_run_agent):
     assert "not configured" in response.json()["detail"]
 
 
-def test_planning_failure_returns_502(mock_run_agent):
-    mock_run_agent.side_effect = ValueError("Plan produced no steps.")
+def test_unknown_workflow_value_error_returns_502(mock_run_agent):
+    mock_run_agent.side_effect = ValueError("Invalid workflow input.")
     response = client.post(
         "/api/research",
         data={"input_type": "url", "url": "https://example.com"},
     )
     assert response.status_code == 502
-    assert "planning failed" in response.json()["detail"]
+    assert "request failed" in response.json()["detail"]
 
 
 def test_llm_provider_error_returns_502(mock_run_agent):

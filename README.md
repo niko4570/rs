@@ -30,6 +30,9 @@ request ──► dispatch ──► evidence ──► [Jev selection] ──�
 Each request makes exactly one synthesis LLM call. Topic searches also make
 one Jev judgment call per source (TypeSafe) before synthesis; URL and file
 requests skip Jev.
+The API keeps its explicit input type when dispatching; the CLI infers a route
+from free-form input. Returned source URLs are checked against the evidence
+actually sent to synthesis. Local-file results have no web source URLs.
 
 ## Installation
 

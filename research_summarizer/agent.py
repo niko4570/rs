@@ -25,6 +25,7 @@ load_dotenv()
 from langsmith import traceable
 
 from research_summarizer.evidence import (
+    EvidenceResult,
     acquire_evidence,
     clear_fetch_cache,
     format_evidence,
@@ -60,23 +61,38 @@ def _resolve_action(request: str) -> tuple[str, str]:
 
 
 @traceable(run_type="chain", name="run_agent")
-def run_agent(request: str, on_progress: ProgressCallback | None = None) -> SummaryResult:
+def run_agent(
+    request: str,
+    on_progress: ProgressCallback | None = None,
+    *,
+    action: str | None = None,
+) -> SummaryResult:
     """Run the research workflow for a single request and return a structured summary."""
     clear_fetch_cache()
     model = build_model()
 
-    action, tool_input = _resolve_action(request)
+    if action is None:
+        action, tool_input = _resolve_action(request)
+    elif action in {"search", "fetch", "read_file"}:
+        tool_input = request
+    else:
+        raise ValueError(f"Unknown action: {action}")
     _progress(on_progress, "execute", f"{action}: {tool_input}")
 
     if action == "search":
-        evidence = _acquire_search_evidence(request, tool_input, on_progress)
+        selected = _acquire_search_evidence(request, tool_input, on_progress)
+        evidence = format_evidence(selected)
+        allowed_urls = {item.url for item in selected.items}
     else:
         evidence = acquire_evidence(action, tool_input)
+        allowed_urls = (
+            {tool_input} if action == "fetch" and not evidence.startswith("[FETCH_ERROR]") else set()
+        )
 
     _progress(on_progress, "summarize", "Summarizing evidence...")
     raw_answer = summarize_evidence(request, evidence, model)
 
-    result = parse_summary(raw_answer)
+    result = parse_summary(raw_answer, allowed_urls=allowed_urls)
 
     _progress(on_progress, "done", "Done")
     return result
@@ -84,15 +100,15 @@ def run_agent(request: str, on_progress: ProgressCallback | None = None) -> Summ
 
 def _acquire_search_evidence(
     request: str, query: str, on_progress: ProgressCallback | None
-) -> str:
-    """Acquire search evidence, let Jev select sources, then format for synthesis."""
+) -> EvidenceResult:
+    """Acquire search evidence and let Jev select sources for synthesis."""
     acquired = search_web_items(query)
     if not acquired.items:
-        return format_evidence(acquired)
+        return acquired
 
     _progress(on_progress, "judge", "Selecting relevant evidence...")
     selected = judge_evidence(request, acquired.items)
-    return format_evidence(selected)
+    return selected
 
 
 def _progress(cb: ProgressCallback | None, stage: str, message: str) -> None:

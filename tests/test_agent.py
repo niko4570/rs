@@ -3,9 +3,12 @@
 import json
 from unittest.mock import Mock, patch
 
+import pytest
+
 from research_summarizer.agent import _resolve_action, run_agent
 from research_summarizer.evidence import EvidenceItem, EvidenceResult, format_evidence
 from research_summarizer.models import SummaryResult
+from research_summarizer.parser import ParseError
 
 
 def _item(title: str, content: str, id_: str = "S1", url: str = "https://example.com/story") -> EvidenceItem:
@@ -16,11 +19,11 @@ def _evidence_result(*items: EvidenceItem) -> EvidenceResult:
     return EvidenceResult(items=tuple(items))
 
 
-def _summary_json(url: str = "https://example.com/article") -> str:
+def _summary_json(url: str | None = None) -> str:
     return json.dumps({
         "summary_bullets": ["Point 1", "Point 2", "Point 3", "Point 4"],
         "key_details": "Some facts.",
-        "sources": [{"title": "Source", "url": url}],
+        "sources": [{"title": "Source", "url": url}] if url else [],
         "caveats": ["Limited to a single source"],
     })
 
@@ -53,6 +56,17 @@ class TestResolveAction:
 
     def test_topic_dispatches_to_search(self):
         assert _resolve_action("latest AI news") == ("search", "latest AI news")
+
+    def test_explicit_topic_keeps_url_and_filename_in_query(self):
+        query = "Compare https://example.com/article with README.md"
+        model = _mock_model(_summary_json())
+        with patch("research_summarizer.agent.build_model", return_value=model), \
+             patch("research_summarizer.agent.search_web_items",
+                   return_value=EvidenceResult(note="No search results found.")) as mock_search, \
+             patch("research_summarizer.agent.acquire_evidence") as mock_acquire:
+            run_agent(query, action="search")
+        mock_search.assert_called_once_with(query)
+        mock_acquire.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -190,3 +204,21 @@ class TestRunAgent:
         assert stages[0] == "execute"
         assert "summarize" in stages
         assert stages[-1] == "done"
+
+    def test_rejects_citation_not_in_selected_search_evidence(self):
+        selected = _evidence_result(_item("Selected", "real content"))
+        dropped = _item("Dropped", "other content", id_="S2", url="https://example.com/drop")
+        model = _mock_model(_summary_json(dropped.url))
+        with patch("research_summarizer.agent.build_model", return_value=model), \
+             patch("research_summarizer.agent.search_web_items",
+                   return_value=_evidence_result(selected.items[0], dropped)), \
+             patch("research_summarizer.agent.judge_evidence", return_value=selected), \
+             pytest.raises(ParseError, match="Source validation failed"):
+            run_agent("topic")
+
+    def test_file_path_cannot_cite_web_source(self):
+        model = _mock_model(_summary_json("https://example.com/invented"))
+        with patch("research_summarizer.agent.build_model", return_value=model), \
+             patch("research_summarizer.evidence.read_text_file", return_value="File content."), \
+             pytest.raises(ParseError, match="Source validation failed"):
+            run_agent("README.md")

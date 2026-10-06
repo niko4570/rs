@@ -33,6 +33,7 @@ from tavily.errors import (
 from tavily.errors import TimeoutError as TavilyTimeoutError
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SUPPORTED_TEXT_EXTENSIONS = frozenset({".txt", ".md", ".markdown"})
 
 # Tavily search: keep the request and the resulting evidence explicitly bounded.
 # Evidence contract: one block per source containing only Title / URL / Content.
@@ -260,6 +261,10 @@ def search_web(query: str) -> str:
 def fetch_url(url: str) -> str:
     """Fetch a URL and return readable page text for summarization.
     Duplicate fetches (same URL minus tracking params) are served from cache."""
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return "[FETCH_ERROR] Invalid URL. Only HTTP(S) URLs are supported."
+
     normalized = _normalize_url(url)
 
     if normalized in _fetch_cache:
@@ -313,10 +318,16 @@ def read_text_file(path: str) -> str:
     except ValueError:
         return "Refusing to read outside the current project folder."
 
+    if file_path.suffix.lower() not in SUPPORTED_TEXT_EXTENSIONS:
+        return "Unsupported file type. Only .txt, .md, and .markdown files are supported."
+
     if not file_path.exists() or not file_path.is_file():
         return f"File not found: {path}"
 
-    return _clean_text(file_path.read_text(encoding="utf-8"), 10000)
+    try:
+        return _clean_text(file_path.read_text(encoding="utf-8"), 10000)
+    except UnicodeDecodeError:
+        return "File is not valid UTF-8 text."
 
 
 def acquire_evidence(action: str, tool_input: str) -> str:
