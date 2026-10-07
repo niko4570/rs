@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
@@ -31,6 +32,7 @@ THRESHOLDS: Mapping[str, float] = {
     "evidence_min": 0.55,  # < this: drop
 }
 MAX_SELECTED_SOURCES = 3
+MAX_JEV_WORKERS = 4
 DEFAULT_TYPESAFE_MODEL = "jev-latest"
 TYPESAFE_TIMEOUT_SECONDS = 30.0
 NO_RELEVANT_EVIDENCE_NOTE = "No sufficiently relevant search evidence was found."
@@ -152,8 +154,9 @@ def judge_evidence(
     """Select the search sources worth sending to synthesis.
 
     One request is made per source (the judgment is about a request / source
-    pair). Returns an ``EvidenceResult`` whose items are the selected sources,
-    or a note when nothing was sufficiently relevant.
+    pair). Requests run in a bounded pool and results retain source order.
+    Returns an ``EvidenceResult`` whose items are the selected sources, or a
+    note when nothing was sufficiently relevant.
     """
     items = tuple(items)
     if not items:
@@ -166,9 +169,13 @@ def judge_evidence(
 
     active_model = model or os.getenv("TYPESAFE_MODEL") or DEFAULT_TYPESAFE_MODEL
     try:
-        judgments = [
-            _judge_source(active_client, request, item, active_model) for item in items
-        ]
+        with ThreadPoolExecutor(max_workers=min(MAX_JEV_WORKERS, len(items))) as pool:
+            judgments = list(
+                pool.map(
+                    lambda item: _judge_source(active_client, request, item, active_model),
+                    items,
+                )
+            )
     except TypeSafeError:
         return EvidenceResult(items=items)
 

@@ -1,5 +1,6 @@
 """Unit tests for Jev evidence selection. TypeSafe is always mocked."""
 
+from threading import Barrier
 from types import SimpleNamespace
 
 from typesafe_sdk import TypeSafeAPIConnectionError
@@ -136,6 +137,22 @@ def test_judge_makes_one_request_per_source_with_contract_only_state():
     assert set(first["state"]["source"]) == {"title", "url", "content"}
     assert first["state"]["source"]["content"] == "Body 1."
     assert set(first["questions"]) == {"relevant", "usable_evidence", "prompt_injection"}
+
+
+def test_judge_runs_source_requests_concurrently():
+    barrier = Barrier(2, timeout=2)
+
+    class ConcurrentClient(_FakeClient):
+        def system_one(self, state, questions, model=None):
+            barrier.wait()
+            return super().system_one(state, questions, model)
+
+    client = ConcurrentClient({"Source 1": (0.8, 0.9, 0.0), "Source 2": (0.9, 0.9, 0.0)})
+
+    result = judge_evidence("topic", (_item(1), _item(2)), client=client)
+
+    assert [item.id for item in result.items] == ["S2", "S1"]
+    assert len(client.calls) == 2
 
 
 def test_judge_ranks_and_caps_selected_sources():
