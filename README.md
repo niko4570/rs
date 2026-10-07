@@ -41,24 +41,19 @@ citations inline; the CLI prints them beneath each bullet.
 
 ## Installation
 
-1. Clone the repository:
+Requires Python 3.11+, Node.js/npm, and Make.
+The Makefile uses POSIX shell commands and `.venv/bin/` paths;
+on Windows, use WSL.
 
-   ```bash
-   git clone https://github.com/yourusername/research-summarizer-agent.git
-   cd research-summarizer-agent
-   ```
+```bash
+git clone https://github.com/niko4570/rs.git
+cd rs
+make install
+```
 
-2. Create and activate a virtual environment:
-
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
-
-3. Install the package:
-   ```bash
-   pip install -e .
-   ```
+`make install` creates `.venv` and installs the Python package in editable
+mode plus frontend dependencies. Configure `.env` as described below before
+running a research request.
 
 ## Configuration
 
@@ -96,60 +91,7 @@ TYPESAFE_MODEL=jev-latest
 If `TYPESAFE_API_KEY` is unset or Jev is unavailable, search evidence is used
 as-is (selection is skipped) rather than failing the request.
 
-## Usage
-
-Run the agent from the command line:
-
-```bash
-research-agent "Summarize the latest news about AI in 2026"
-```
-
-Or with a URL:
-
-```bash
-research-agent "https://example.com/article"
-```
-
-Or with a local file:
-
-```bash
-research-agent "/path/to/your/file.md"
-```
-
-If no argument is provided, you'll be prompted to enter a research request.
-
-## Known Issues
-
-- Topic research runs a single web search (no multi-source cross-checking)
-- Failed URL fetches and search errors are passed to the LLM as evidence, so
-  they are reflected in the summary rather than retried
-- No explicit runtime limits
-- DeepSeek v4 models require disabling thinking mode
-
-## Development
-
-This project uses:
-
-- Python 3.11+
-- `langchain-openai` for LLM access (no LangChain agent framework)
-- Pydantic for structured output
-- FastAPI + Uvicorn for the local API
-- Ruff for linting
-
-## License
-
-[MIT License](LICENSE)
-
-This folder already had a `deepseek_api` variable, so the agent also accepts that
-name for convenience.
-
-For web search through Tavily:
-
-```bash
-TAVILY_API_KEY=tvly-...
-```
-
-## Optional LangSmith Tracing
+### Optional LangSmith Tracing
 
 Add these to `.env` if you want to see traces, tool calls, latency, and errors in
 LangSmith:
@@ -160,32 +102,67 @@ LANGSMITH_API_KEY=lsv2_...
 LANGSMITH_PROJECT=research-summarizer-agent
 ```
 
-## Run
+## Usage
+
+Run these commands from the repository root after installation and configuration.
+
+### CLI
+
+Activate the virtual environment:
 
 ```bash
-python -m research_summarizer.cli "Research and summarize LangChain vs LangGraph for beginners"
+source .venv/bin/activate
 ```
 
-You can also pass a URL:
+Pass a topic, URL, or a local file within the project root:
 
 ```bash
-python -m research_summarizer.cli "Summarize https://docs.langchain.com/oss/python/langchain/overview"
+research-agent "Summarize the causes of the Opium War"
+research-agent "https://example.com/article"
+research-agent "./README.md"
 ```
 
-Or a local file:
+`python -m research_summarizer.cli` is an alternative to `research-agent`.
+Without an argument, the CLI prompts for a request.
+
+### Web app
+
+Start the backend and frontend together:
 
 ```bash
-python -m research_summarizer.cli "Summarize README.md"
+make dev
 ```
+
+Open http://localhost:5173. The backend runs at http://127.0.0.1:8000.
+Press Ctrl+C to stop both servers.
+
+To run them separately, use two terminals:
+
+```bash
+# Terminal 1, from the repository root
+make backend
+```
+
+```bash
+# Terminal 2, from the repository root
+make frontend
+```
+
+These targets run the following commands respectively:
+
+```bash
+.venv/bin/uvicorn research_summarizer.api:app --host 127.0.0.1 --port 8000 --reload
+(cd frontend && npm run dev)
+```
+
+The frontend uses `VITE_API_BASE_URL`, defaulting to
+`http://127.0.0.1:8000`. To override it, copy `frontend/.env.example`
+to `frontend/.env` and edit the value.
 
 ## Local Web API
 
-A minimal FastAPI layer exposes the same agent core over HTTP:
-
-```bash
-pip install -e .
-uvicorn research_summarizer.api:app --host 127.0.0.1 --port 8000 --reload
-```
+A minimal FastAPI layer exposes the same agent core over HTTP.
+Start it with `make backend` (see Usage).
 
 Endpoints:
 
@@ -216,55 +193,42 @@ agent's existing local-file tool. The response is the structured
 
 CORS is enabled for the local Vite dev origin (`http://localhost:5173`).
 
-## Local Web UI
+## Known Issues
 
-A React + Vite frontend lives in `frontend/`. It supports all three input
-workflows (research question, URL, local file) and renders the backend's
-`SummaryResult` as a research document.
+- Topic research runs a single web search (no multi-source cross-checking)
+- Failed URL fetches and search errors are passed to the LLM as evidence, so
+  they are reflected in the summary rather than retried
+- No explicit runtime limits
+- DeepSeek v4 models require disabling thinking mode
 
-Backend (terminal 1):
+## Development
 
-```bash
-uvicorn research_summarizer.api:app --host 127.0.0.1 --port 8000 --reload
-```
+This project uses:
 
-Frontend (terminal 2):
+- Python 3.11+
+- `langchain-openai` for LLM access (no LangChain agent framework)
+- Pydantic for structured output
+- FastAPI + Uvicorn for the local API
+- Ruff for linting
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Then open:
-
-```text
-http://localhost:5173
-```
-
-The frontend reads the backend URL from `VITE_API_BASE_URL` and defaults to
-`http://127.0.0.1:8000`. Copy `frontend/.env.example` to `frontend/.env` to
-override it.
-
-### Make targets
-
-Common tasks are wrapped in the root `Makefile`:
+Install the additional tools needed for tests and linting:
 
 ```bash
-make install   # create venv + install backend and frontend deps (once)
-make dev       # start backend (:8000) and frontend (:5173) together
-make test      # run the backend test suite
-make lint      # run Ruff
-make check     # lint + backend tests + frontend build
+.venv/bin/python -m pip install -e ".[dev]" ruff
 ```
 
-`make dev` starts both servers and stops both on Ctrl+C. Run `make help` to
-list every target.
+`make install` does not install the optional development dependencies,
+and Ruff is not currently included in the `dev` extra.
 
-## Normal Development Workflow
+```bash
+make test      # run backend tests
+make lint      # lint Python sources and tests with Ruff
+make build     # type-check and production-build the frontend
+make check     # run lint, backend tests, and frontend build
+```
 
-1. Start with one clear job: research and summarize source material.
-2. Keep the smallest useful tools: search, fetch URL, read file.
-3. Dispatch deterministically: URL → fetch, file → read, topic → search.
-4. Use LangSmith tracing while testing.
-5. Save 5-10 test prompts and check whether the answer is accurate, cited, and concise.
+Run `make help` to list all targets.
+
+## License
+
+[MIT License](LICENSE)
