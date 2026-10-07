@@ -15,17 +15,7 @@ A minimal, local-only research summarizer that accepts a topic, URL, or local te
 
 The workflow is intentionally minimal:
 
-```text
-request ──► dispatch ──► evidence ──► [Jev selection] ──► one LLM call ──► SummaryResult
-              │             │              │                   │
-              │             │              │                   └─ synthesize JSON (summary,
-              │             │              │                      key details, sources, caveats)
-              │             │              └─ search only: TypeSafe Jev ranks sources,
-              │             │                 code keeps the top 3
-              │             └─ URL → fetch, .txt/.md file → read_file,
-              │                anything else → search (Tavily)
-              └─ deterministic, no LLM planning
-```
+![Hand-drawn workflow for the Research Summarizer Agent](assets/workflow-handdrawn.svg)
 
 Each request makes exactly one synthesis LLM call. Topic searches also make
 one Jev judgment call per source (TypeSafe) before synthesis; URL and file
