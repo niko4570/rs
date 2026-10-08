@@ -785,3 +785,130 @@ def test_search_web_items_strips_image_markup_and_keeps_article(
     assert "img.example" not in content
     assert "cta.example" not in content
     assert "![hero]" not in content
+
+
+# ---------------------------------------------------------------------------
+# L1 boilerplate edge trimming
+# ---------------------------------------------------------------------------
+
+
+def test_trim_edges_removes_leading_nav_and_keeps_heading():
+    from research_summarizer.evidence import _trim_boilerplate_edges
+
+    nav = (
+        "[Home](https://x.example)\n"
+        "[Products](https://x.example/p)\n"
+        "[Pricing](https://x.example/pr)\n"
+        "Menu"
+    )
+    article = "# Real Article Title\n\nThe body explains the topic in detail."
+    text = f"{nav}\n\n{article}"
+    trimmed = _trim_boilerplate_edges(text)
+    assert trimmed.startswith("# Real Article Title")
+    assert "[Products]" not in trimmed
+    assert "The body explains the topic" in trimmed
+
+
+def test_trim_edges_never_drops_heading_even_after_long_nav():
+    from research_summarizer.evidence import _trim_boilerplate_edges
+
+    nav = "\n".join(f"[Nav {i}](https://x.example/{i})" for i in range(200))
+    text = f"{nav}\n\n# Title Kept\n\nSome prose line here that is long enough."
+    trimmed = _trim_boilerplate_edges(text)
+    assert "# Title Kept" in trimmed
+    assert "Some prose line here that is long enough." in trimmed
+
+
+def test_trim_edges_removes_trailing_footer():
+    from research_summarizer.evidence import _trim_boilerplate_edges
+
+    article = "# Title\n\nA real prose paragraph about the subject matter."
+    footer = (
+        "[Privacy](https://x.example/privacy)\n"
+        "[Terms](https://x.example/terms)\n"
+        "© 2026"
+    )
+    text = f"{article}\n\n{footer}"
+    trimmed = _trim_boilerplate_edges(text)
+    assert "A real prose paragraph" in trimmed
+    assert "[Privacy]" not in trimmed
+    assert "© 2026" not in trimmed
+
+
+def test_trim_edges_never_deletes_middle_lines():
+    from research_summarizer.evidence import _trim_boilerplate_edges
+
+    text = (
+        "[Nav](https://x.example)\n\n"
+        "# Title\n\n"
+        "Middle prose that must survive the trim operation entirely.\n\n"
+        "## Section\n\n"
+        "[Footer](https://x.example/f)"
+    )
+    trimmed = _trim_boilerplate_edges(text)
+    assert "Middle prose that must survive" in trimmed
+    assert "## Section" in trimmed
+
+
+def test_trim_edges_unchanged_when_no_heading_or_prose():
+    from research_summarizer.evidence import _trim_boilerplate_edges
+
+    text = "[A](https://x.example)\n[B](https://x.example)\nshort"
+    assert _trim_boilerplate_edges(text) == text
+
+
+def test_clean_search_evidence_off_returns_raw(mocker):
+    from research_summarizer import evidence
+
+    mocker.patch.object(evidence, "EVIDENCE_CLEANING", "off")
+    raw = "![img](x.png)\n\n# Title\n\nBody text."
+    assert evidence._clean_search_evidence(raw) == raw
+
+
+def test_clean_search_evidence_structure_runs_l0_only(mocker):
+    from research_summarizer import evidence
+
+    mocker.patch.object(evidence, "EVIDENCE_CLEANING", "structure")
+    raw = "[Nav](https://x.example)\n\n![img](x.png)\n\n# Title"
+    cleaned = evidence._clean_search_evidence(raw)
+    assert "x.png" not in cleaned
+    assert "[Nav](https://x.example)" in cleaned  # L1 not applied
+
+
+def test_clean_search_evidence_edges_runs_l0_and_l1(mocker):
+    from research_summarizer import evidence
+
+    mocker.patch.object(evidence, "EVIDENCE_CLEANING", "edges")
+    raw = "[Nav](https://x.example)\n\n![img](x.png)\n\n# Title\n\nArticle body text."
+    cleaned = evidence._clean_search_evidence(raw)
+    assert "x.png" not in cleaned
+    assert "[Nav]" not in cleaned
+    assert cleaned.startswith("# Title")
+
+
+def test_search_web_items_edges_trims_nav(mock_tavily_key, mocker):
+    from research_summarizer import evidence
+
+    mocker.patch.object(evidence, "EVIDENCE_CLEANING", "edges")
+    nav = "\n".join(f"[Nav {i}](https://x.example/{i})" for i in range(40))
+    body = "Substantive article prose that describes the subject in detail. " * 20
+    raw_content = f"{nav}\n\n# Article Heading\n\n{body}"
+    _mock_search(
+        mocker,
+        {
+            "results": [
+                {
+                    "title": "Article",
+                    "url": "https://example.com/a",
+                    "raw_content": raw_content,
+                }
+            ]
+        },
+    )
+
+    items = search_web_items("q").items
+
+    assert len(items) == 1
+    assert "[Nav 0]" not in items[0].content
+    assert "# Article Heading" in items[0].content
+    assert "Substantive article prose" in items[0].content

@@ -48,6 +48,15 @@ MIN_SEARCH_CONTENT_CHARS = 200  # stop when the remaining budget is too small
 MIN_CLEAN_CONTENT_CHARS = 800  # below this floor, keep the raw text
 CLEANING_FALLBACK_RATIO = 0.35  # keep raw if cleaned < 35% of raw
 
+# Evidence-cleaning level. ``off`` disables cleaning, ``structure`` runs L0
+# (markdown noise), ``edges`` adds L1 (edge boilerplate trimming), ``all``
+# reserves room for a later L2 (consent blocks).
+EVIDENCE_CLEANING = os.getenv("EVIDENCE_CLEANING", "structure").strip().lower()
+L1_MIN_PROSE_CHARS = 60  # a line this long with low link density is prose
+L1_MAX_PROSE_LINK_DENSITY = 0.3  # higher link density marks nav/footer lines
+L1_BOILERPLATE_LINK_DENSITY = 0.5  # nav/footer lines are mostly link markup
+L1_MAX_SHORT_FOOTER_CHARS = 20  # short trailing text ("© 2026") is footer
+
 
 @dataclass(frozen=True)
 class EvidenceItem:
@@ -202,6 +211,85 @@ def _apply_cleaning_with_fallback(raw: str, cleaner) -> str:
     return cleaned
 
 
+_HEADING_RE = re.compile(r"^#{1,6}\s")
+_MD_LINK_RE = re.compile(r"!?\[[^\]]*\]\([^)]*\)")
+
+
+def _link_density(line: str) -> float:
+    """Fraction of a line made up of Markdown link/image markup."""
+    stripped = line.strip()
+    if not stripped:
+        return 0.0
+    link_chars = sum(len(match) for match in _MD_LINK_RE.findall(stripped))
+    return link_chars / len(stripped)
+
+
+def _is_heading(line: str) -> bool:
+    """True when the line is a Markdown heading (``#`` .. ``######``)."""
+    return bool(_HEADING_RE.match(line.strip()))
+
+
+def _is_prose_line(line: str) -> bool:
+    """True when the line looks like article prose rather than nav/footer."""
+    stripped = line.strip()
+    if len(stripped) < L1_MIN_PROSE_CHARS:
+        return False
+    return _link_density(stripped) < L1_MAX_PROSE_LINK_DENSITY
+
+
+def _is_trailing_boilerplate(line: str) -> bool:
+    """True for blank, link-dense, or very short trailing footer lines."""
+    stripped = line.strip()
+    if not stripped:
+        return True
+    if _is_heading(stripped):
+        return False
+    if _link_density(stripped) >= L1_BOILERPLATE_LINK_DENSITY:
+        return True
+    return len(stripped) <= L1_MAX_SHORT_FOOTER_CHARS
+
+
+def _trim_boilerplate_edges(text: str) -> str:
+    """Trim leading nav and trailing footer while keeping the article intact.
+
+    The article starts at the first heading/prose line, so a page title is
+    never trimmed. The end keeps the last heading/prose line and only removes a
+    contiguous run of trailing boilerplate (blank, link-dense, or very short
+    footer lines). If no heading/prose anchor exists, the text is unchanged.
+    Only a prefix and a suffix are ever removed, so no middle line is lost.
+    """
+    if not text:
+        return text
+
+    lines = text.split("\n")
+    anchors = [
+        index
+        for index, line in enumerate(lines)
+        if _is_heading(line) or _is_prose_line(line)
+    ]
+    if not anchors:
+        return text
+
+    start = anchors[0]
+    end = len(lines) - 1
+    while end > anchors[-1] and _is_trailing_boilerplate(lines[end]):
+        end -= 1
+
+    if start == 0 and end == len(lines) - 1:
+        return text
+    return "\n".join(lines[start : end + 1])
+
+
+def _clean_search_evidence(raw: str) -> str:
+    """Apply the configured cleaning levels to one source's raw content."""
+    if EVIDENCE_CLEANING == "off":
+        return raw
+    cleaned = _strip_markdown_noise(raw)
+    if EVIDENCE_CLEANING in {"edges", "all"}:
+        cleaned = _trim_boilerplate_edges(cleaned)
+    return cleaned
+
+
 def _select_search_content(result: dict) -> str:
     """Return the best available text for one Tavily search result.
 
@@ -281,7 +369,7 @@ def search_web_items(query: str) -> EvidenceResult:
             continue
 
         content = _select_search_content(result)
-        content = _apply_cleaning_with_fallback(content, _strip_markdown_noise)
+        content = _apply_cleaning_with_fallback(content, _clean_search_evidence)
 
         separator = 2 if items else 0
         header = f"Title: {title}\nURL: {link}\nContent: "
