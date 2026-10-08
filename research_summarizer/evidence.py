@@ -43,6 +43,11 @@ MAX_SEARCH_CONTENT_CHARS = 6000  # per-source content cap
 MAX_SEARCH_EVIDENCE_CHARS = 20000  # total evidence cap across all sources
 MIN_SEARCH_CONTENT_CHARS = 200  # stop when the remaining budget is too small
 
+# L0 evidence cleaning: strip non-citable markdown markup before truncation so
+# article text is not crowded out of the fixed per-source budget.
+MIN_CLEAN_CONTENT_CHARS = 800  # below this floor, keep the raw text
+CLEANING_FALLBACK_RATIO = 0.35  # keep raw if cleaned < 35% of raw
+
 
 @dataclass(frozen=True)
 class EvidenceItem:
@@ -154,6 +159,49 @@ def _clean_title(text: str, max_chars: int = 200) -> str:
     return re.sub(r"\s+", " ", text).strip()[:max_chars]
 
 
+# Markdown constructs that cannot be cited as text evidence: linked images,
+# standalone images, and empty links. Removing them is lossless for prose.
+_LINKED_IMAGE_RE = re.compile(r"\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)")
+_IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+_EMPTY_LINK_RE = re.compile(r"\[\]\([^)]*\)")
+
+
+def _strip_markdown_noise(text: str) -> str:
+    """Remove markdown images and empty links without deleting visible text.
+
+    Patterns are applied until the text stops changing so compound structures
+    such as a linked image are removed whole instead of leaving a residue.
+    """
+    if not text:
+        return ""
+
+    previous = None
+    current = text
+    while current != previous:
+        previous = current
+        current = _LINKED_IMAGE_RE.sub("", current)
+        current = _IMAGE_RE.sub("", current)
+        current = _EMPTY_LINK_RE.sub("", current)
+    return current
+
+
+def _apply_cleaning_with_fallback(raw: str, cleaner) -> str:
+    """Apply ``cleaner`` but fall back to ``raw`` when cleaning looks unsafe.
+
+    The safety valve guarantees evidence never gets worse: if the cleaned text
+    is empty, falls below an absolute floor, or shrinks past a ratio, the raw
+    text is returned unchanged.
+    """
+    cleaned = cleaner(raw)
+    if not cleaned.strip():
+        return raw
+    if len(cleaned) < MIN_CLEAN_CONTENT_CHARS:
+        return raw
+    if len(cleaned) < CLEANING_FALLBACK_RATIO * len(raw):
+        return raw
+    return cleaned
+
+
 def _select_search_content(result: dict) -> str:
     """Return the best available text for one Tavily search result.
 
@@ -233,6 +281,7 @@ def search_web_items(query: str) -> EvidenceResult:
             continue
 
         content = _select_search_content(result)
+        content = _apply_cleaning_with_fallback(content, _strip_markdown_noise)
 
         separator = 2 if items else 0
         header = f"Title: {title}\nURL: {link}\nContent: "

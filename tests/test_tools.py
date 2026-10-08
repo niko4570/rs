@@ -673,3 +673,115 @@ def test_fetch_http_error_not_cached(mocker):
 
     assert mock_get.call_count == 2
     assert "[CACHED" not in result
+
+
+# ---------------------------------------------------------------------------
+# L0 markdown-noise cleaning
+# ---------------------------------------------------------------------------
+
+
+def test_strip_markdown_noise_removes_linked_image():
+    from research_summarizer.evidence import _strip_markdown_noise
+
+    text = "Before [![alt text](https://img.example/a.png)](https://link.example) after"
+    assert _strip_markdown_noise(text) == "Before  after"
+
+
+def test_strip_markdown_noise_removes_standalone_image():
+    from research_summarizer.evidence import _strip_markdown_noise
+
+    assert _strip_markdown_noise("A ![logo](https://img.example/l.png) B") == "A  B"
+
+
+def test_strip_markdown_noise_removes_empty_link():
+    from research_summarizer.evidence import _strip_markdown_noise
+
+    assert _strip_markdown_noise("A [](https://x.example) B") == "A  B"
+
+
+def test_strip_markdown_noise_preserves_inline_link_prose():
+    from research_summarizer.evidence import _strip_markdown_noise
+
+    text = "See [the docs](https://docs.example) for details."
+    assert _strip_markdown_noise(text) == text
+
+
+def test_strip_markdown_noise_preserves_reference_links():
+    from research_summarizer.evidence import _strip_markdown_noise
+
+    text = "Read [1] and [the guide][guide].\n\n[guide]: https://g.example"
+    assert _strip_markdown_noise(text) == text
+
+
+def test_strip_markdown_noise_removes_linked_image_inside_prose():
+    from research_summarizer.evidence import _strip_markdown_noise
+
+    text = "Intro sentence.\n\n[![cover](i.png)](https://x.example)\n\nBody sentence."
+    cleaned = _strip_markdown_noise(text)
+    assert "Intro sentence." in cleaned
+    assert "Body sentence." in cleaned
+    assert "i.png" not in cleaned
+    assert "cover" not in cleaned
+
+
+def test_apply_cleaning_with_fallback_returns_raw_when_cleaned_empty():
+    from research_summarizer.evidence import _apply_cleaning_with_fallback
+
+    raw = "![a](1.png)![b](2.png)"
+    assert _apply_cleaning_with_fallback(raw, lambda _: "") == raw
+
+
+def test_apply_cleaning_with_fallback_returns_raw_below_floor():
+    from research_summarizer.evidence import MIN_CLEAN_CONTENT_CHARS, _apply_cleaning_with_fallback
+
+    raw = "x" * (MIN_CLEAN_CONTENT_CHARS - 1)
+    assert _apply_cleaning_with_fallback(raw, lambda t: t[:-1]) == raw
+
+
+def test_apply_cleaning_with_fallback_returns_raw_when_shrunk_past_ratio():
+    from research_summarizer.evidence import _apply_cleaning_with_fallback
+
+    raw = "A" * 10000
+    shrunken = "B" * 1000  # 10% < 35% ratio
+    assert _apply_cleaning_with_fallback(raw, lambda _: shrunken) == raw
+
+
+def test_apply_cleaning_with_fallback_keeps_safe_cleaned_text():
+    from research_summarizer.evidence import _apply_cleaning_with_fallback
+
+    raw = "A" * 10000
+    cleaned = "A" * 9000  # 90% > 35% ratio, above floor
+    assert _apply_cleaning_with_fallback(raw, lambda _: cleaned) == cleaned
+
+
+def test_search_web_items_strips_image_markup_and_keeps_article(
+    mock_tavily_key, mocker
+):
+    article = "The Jev model returns typed probabilities. " * 60  # > 800 chars
+    raw_content = (
+        "# Title\n\n"
+        "![hero](https://img.example/hero.png)\n\n"
+        f"{article}\n\n"
+        "[![cta](https://img.example/cta.png)](https://cta.example)\n"
+    )
+    _mock_search(
+        mocker,
+        {
+            "results": [
+                {
+                    "title": "Jev Guide",
+                    "url": "https://example.com/jev",
+                    "raw_content": raw_content,
+                }
+            ]
+        },
+    )
+
+    items = search_web_items("jev").items
+
+    assert len(items) == 1
+    content = items[0].content
+    assert "typed probabilities" in content
+    assert "img.example" not in content
+    assert "cta.example" not in content
+    assert "![hero]" not in content
