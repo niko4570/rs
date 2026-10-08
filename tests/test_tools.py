@@ -993,3 +993,41 @@ def test_clean_search_evidence_edges_does_not_run_l2(mocker):
     )
     cleaned = evidence._clean_search_evidence(raw)
     assert "We use cookies to enhance" in cleaned  # L1 keeps it; L2 not applied
+
+
+def test_strip_consent_block_does_not_cross_article_heading():
+    from research_summarizer.evidence import _strip_consent_block
+
+    text = (
+        "We value your privacy\n"
+        "We use cookies to enhance your browsing experience and serve ads.\n"
+        "Reject All Accept All\n"
+        "## Cookie banner best practices\n\n"
+        "Accept all cookies only after explicit consent is given by the user.\n"
+        "Reject all and manage privacy preferences at any time."
+    )
+    cleaned = _strip_consent_block(text)
+    assert "## Cookie banner best practices" in cleaned
+    assert "Accept all cookies only after explicit consent" in cleaned
+
+
+def test_strip_consent_block_keeps_privacy_article_title():
+    from research_summarizer.evidence import _strip_consent_block
+
+    text = (
+        "# Cookie Consent Banner: Compliance and Design\n\n"
+        "Effortlessly stay compliant using cookie consent tooling.\n\n"
+        "Further reading about privacy."
+    )
+    assert _strip_consent_block(text) == text
+
+
+def test_strip_consent_block_ignores_single_breadcrumb_title_line():
+    from research_summarizer.evidence import _strip_consent_block
+
+    text = (
+        "[Home](/) [Blog](/blog) GDPR Cookie Consent: An Essential Guide\n\n"
+        "# GDPR Cookie Consent: An Essential Guide\n\n"
+        "Article body about consent management and cookie policies."
+    )
+    assert _strip_consent_block(text) == text

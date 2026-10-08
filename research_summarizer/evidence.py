@@ -69,6 +69,7 @@ CONSENT_MARKERS = (
 )
 CONSENT_HEAD_LINES = 3  # markers must appear within the first non-blank lines
 CONSENT_MAX_LINE_GAP = 10  # a larger gap between markers ends the banner run
+CONSENT_MIN_MARKER_LINES = 2  # a real banner spans at least two marker lines
 
 
 @dataclass(frozen=True)
@@ -315,22 +316,37 @@ def _strip_consent_block(text: str) -> str:
     if first_content is None:
         return text
 
+    # A consent banner never crosses the article's first heading. This stops
+    # privacy-themed articles (whose body is full of consent keywords) and
+    # articles whose H1 itself contains "cookie"/"consent" from being stripped.
+    first_heading = next(
+        (index for index, line in enumerate(lines) if _is_heading(line)), len(lines)
+    )
+    if first_content >= first_heading:
+        return text
+
     head = " ".join(lines[first_content : first_content + CONSENT_HEAD_LINES]).lower()
     if not any(marker in head for marker in CONSENT_MARKERS):
         return text
 
     last_marker: int | None = None
     markers: set[str] = set()
-    for index, line in enumerate(lines):
+    marker_lines = 0
+    for index, line in enumerate(lines[:first_heading]):
         found = _consent_markers_in(line)
         if not found:
             continue
         if last_marker is not None and index - last_marker > CONSENT_MAX_LINE_GAP:
             break
         markers |= found
+        marker_lines += 1
         last_marker = index
 
-    if last_marker is None or len(markers) < 2:
+    if (
+        last_marker is None
+        or len(markers) < 2
+        or marker_lines < CONSENT_MIN_MARKER_LINES
+    ):
         return text
 
     remainder = lines[last_marker + 1 :]
