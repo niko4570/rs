@@ -57,6 +57,19 @@ L1_MAX_PROSE_LINK_DENSITY = 0.3  # higher link density marks nav/footer lines
 L1_BOILERPLATE_LINK_DENSITY = 0.5  # nav/footer lines are mostly link markup
 L1_MAX_SHORT_FOOTER_CHARS = 20  # short trailing text ("© 2026") is footer
 
+# L2 consent banner handling. The banner is only removed when it sits at the
+# very start of the content and matches at least two distinct markers.
+CONSENT_MARKERS = (
+    "cookie",
+    "consent",
+    "privacy",
+    "accept all",
+    "reject all",
+    "we value your privacy",
+)
+CONSENT_HEAD_LINES = 3  # markers must appear within the first non-blank lines
+CONSENT_MAX_LINE_GAP = 10  # a larger gap between markers ends the banner run
+
 
 @dataclass(frozen=True)
 class EvidenceItem:
@@ -280,11 +293,59 @@ def _trim_boilerplate_edges(text: str) -> str:
     return "\n".join(lines[start : end + 1])
 
 
+def _consent_markers_in(line: str) -> set[str]:
+    """Return the set of consent markers present in one line."""
+    lowered = line.lower()
+    return {marker for marker in CONSENT_MARKERS if marker in lowered}
+
+
+def _strip_consent_block(text: str) -> str:
+    """Remove a leading consent/cookie banner, keeping the rest unchanged.
+
+    The banner is only removed when it starts at the very top and matches at
+    least two distinct markers; otherwise the text is returned unchanged. This
+    is the highest false-positive-risk step, so the guards are intentionally
+    strict and the caller keeps it behind the ``all`` cleaning level.
+    """
+    if not text:
+        return text
+
+    lines = text.split("\n")
+    first_content = next((index for index, line in enumerate(lines) if line.strip()), None)
+    if first_content is None:
+        return text
+
+    head = " ".join(lines[first_content : first_content + CONSENT_HEAD_LINES]).lower()
+    if not any(marker in head for marker in CONSENT_MARKERS):
+        return text
+
+    last_marker: int | None = None
+    markers: set[str] = set()
+    for index, line in enumerate(lines):
+        found = _consent_markers_in(line)
+        if not found:
+            continue
+        if last_marker is not None and index - last_marker > CONSENT_MAX_LINE_GAP:
+            break
+        markers |= found
+        last_marker = index
+
+    if last_marker is None or len(markers) < 2:
+        return text
+
+    remainder = lines[last_marker + 1 :]
+    if not any(line.strip() for line in remainder):
+        return text
+    return "\n".join(remainder).lstrip("\n")
+
+
 def _clean_search_evidence(raw: str) -> str:
     """Apply the configured cleaning levels to one source's raw content."""
     if EVIDENCE_CLEANING == "off":
         return raw
     cleaned = _strip_markdown_noise(raw)
+    if EVIDENCE_CLEANING == "all":
+        cleaned = _strip_consent_block(cleaned)
     if EVIDENCE_CLEANING in {"edges", "all"}:
         cleaned = _trim_boilerplate_edges(cleaned)
     return cleaned

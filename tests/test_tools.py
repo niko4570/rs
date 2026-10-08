@@ -912,3 +912,84 @@ def test_search_web_items_edges_trims_nav(mock_tavily_key, mocker):
     assert "[Nav 0]" not in items[0].content
     assert "# Article Heading" in items[0].content
     assert "Substantive article prose" in items[0].content
+
+
+# ---------------------------------------------------------------------------
+# L2 consent banner handling
+# ---------------------------------------------------------------------------
+
+
+def test_strip_consent_block_removes_leading_banner():
+    from research_summarizer.evidence import _strip_consent_block
+
+    banner = (
+        "We value your privacy\n"
+        "We use cookies to enhance your browsing experience.\n"
+        "Reject All Accept All\n"
+        "Cookie analytics_id\n"
+        "*   Duration 1 year\n"
+        "*   Description Example cookie.\n"
+        "Powered by consent platform"
+    )
+    text = f"{banner}\n\n# Real Article\n\nThe article body starts here."
+    cleaned = _strip_consent_block(text)
+    assert cleaned.startswith("# Real Article")
+    assert "We value your privacy" not in cleaned
+    assert "The article body starts here." in cleaned
+
+
+def test_strip_consent_block_requires_start_anchor():
+    from research_summarizer.evidence import _strip_consent_block
+
+    text = "# Article\n\nBody text.\n\nThis page mentions cookies and consent."
+    assert _strip_consent_block(text) == text
+
+
+def test_strip_consent_block_requires_two_distinct_markers():
+    from research_summarizer.evidence import _strip_consent_block
+
+    text = "Cookie notice\nMore about cookies here\n\n# Article\n\nBody text."
+    assert _strip_consent_block(text) == text
+
+
+def test_strip_consent_block_keeps_text_when_banner_is_everything():
+    from research_summarizer.evidence import _strip_consent_block
+
+    text = "We value your privacy\nWe use cookies and consent tools.\nAccept all"
+    assert _strip_consent_block(text) == text
+
+
+def test_clean_search_evidence_all_runs_l0_l1_l2(mocker):
+    from research_summarizer import evidence
+
+    mocker.patch.object(evidence, "EVIDENCE_CLEANING", "all")
+    raw = (
+        "[Nav](https://x.example)\n\n"
+        "We value your privacy\nWe use cookies and consent tools.\nAccept all\n\n"
+        "# Article Title\n\n"
+        "Article body text that is long enough to be preserved as evidence here."
+    )
+    cleaned = evidence._clean_search_evidence(raw)
+    assert "we value your privacy" not in cleaned.lower()
+    assert "[Nav" not in cleaned
+    assert "# Article Title" in cleaned
+    assert "Article body text" in cleaned
+
+
+def test_clean_search_evidence_edges_does_not_run_l2(mocker):
+    from research_summarizer import evidence
+
+    mocker.patch.object(evidence, "EVIDENCE_CLEANING", "edges")
+    # The banner contains a prose line, so L1 treats it as the article anchor
+    # and keeps it. Only L2 (the ``all`` level) removes it.
+    raw = (
+        "We value your privacy\n"
+        "We use cookies to enhance your browsing experience and personalise ads.\n"
+        "Reject All Accept All\n"
+        "Cookie analytics_id\n"
+        "Powered by consent platform\n\n"
+        "# Article Title\n\n"
+        "Article body text that is long enough to be preserved as evidence here."
+    )
+    cleaned = evidence._clean_search_evidence(raw)
+    assert "We use cookies to enhance" in cleaned  # L1 keeps it; L2 not applied
