@@ -1,10 +1,24 @@
 # Plan: Info-Preserving Cleaning of Tavily Search Evidence
 
-Status: proposed — pending feasibility review
+Status: L0/L1/L2 implemented and merged locally; default is L0 (`structure`).
 Owner: research_summarizer
 Scope: `research_summarizer/evidence.py` (search path), tests, no API/contract change
 
-## Feasibility verdict (read this first)
+## Implementation status
+
+L0, L1 and hardened L2 are implemented in `evidence.py` and covered by mocked tests.
+Set `EVIDENCE_CLEANING` before starting the process: `off`, `structure` (default L0),
+`edges` (L0 + L1), or `all` (L0 + L2 + L1). Cleaning runs on search content before
+length limits; URL and local-file acquisition are unchanged. The fallback applies to
+the combined cleaned result, not separately to each phase. L2 stops before the first
+Markdown heading and requires at least two marker lines and two distinct markers.
+
+The proposal below records the original design. Cleaning is heuristic: image alt text
+is removed, and fallback guards do not guarantee that useful text can never be lost.
+Reported live experiments support evidence recovery; final synthesis quality remains
+a separate validation step. Trace cleaning counters are not implemented.
+
+## Feasibility verdict (original proposal)
 
 **Verdict: feasible, low-risk if phased as L0 → L1 → L2.** The work is confined to
 `research_summarizer/evidence.py`, adds no dependencies, and uses pure functions that are easy

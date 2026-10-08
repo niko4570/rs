@@ -116,6 +116,9 @@ For Tavily:
 - Do not request Tavily's answer synthesis; the project LLM is responsible for synthesis.
 - Prefer `raw_content` when present; fall back to Tavily's `content` field when necessary.
 - Preserve source title and URL.
+- Clean search content before truncation according to `EVIDENCE_CLEANING`: `off`,
+  `structure` (default L0), `edges` (L0+L1), or `all` (L0+L2+L1). Apply the
+  length/ratio fallback to the combined cleaned result. URL/file paths bypass this cleaning.
 - Apply explicit per-source and total evidence limits so a search cannot overflow the LLM context.
 - Do not pass the entire raw Tavily response or unrelated metadata to the LLM.
 - Do not fabricate missing title, URL, or content.

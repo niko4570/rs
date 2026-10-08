@@ -50,7 +50,7 @@ CLEANING_FALLBACK_RATIO = 0.35  # keep raw if cleaned < 35% of raw
 
 # Evidence-cleaning level. ``off`` disables cleaning, ``structure`` runs L0
 # (markdown noise), ``edges`` adds L1 (edge boilerplate trimming), ``all``
-# reserves room for a later L2 (consent blocks).
+# adds L2 (leading consent blocks).
 EVIDENCE_CLEANING = os.getenv("EVIDENCE_CLEANING", "structure").strip().lower()
 L1_MIN_PROSE_CHARS = 60  # a line this long with low link density is prose
 L1_MAX_PROSE_LINK_DENSITY = 0.3  # higher link density marks nav/footer lines
@@ -183,14 +183,14 @@ def _clean_title(text: str, max_chars: int = 200) -> str:
 
 
 # Markdown constructs that cannot be cited as text evidence: linked images,
-# standalone images, and empty links. Removing them is lossless for prose.
+# standalone images, and empty links. Image alt text is removed along with the markup.
 _LINKED_IMAGE_RE = re.compile(r"\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)")
 _IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
 _EMPTY_LINK_RE = re.compile(r"\[\]\([^)]*\)")
 
 
 def _strip_markdown_noise(text: str) -> str:
-    """Remove markdown images and empty links without deleting visible text.
+    """Remove markdown images (including alt text) and empty links.
 
     Patterns are applied until the text stops changing so compound structures
     such as a linked image are removed whole instead of leaving a residue.
@@ -211,7 +211,7 @@ def _strip_markdown_noise(text: str) -> str:
 def _apply_cleaning_with_fallback(raw: str, cleaner) -> str:
     """Apply ``cleaner`` but fall back to ``raw`` when cleaning looks unsafe.
 
-    The safety valve guarantees evidence never gets worse: if the cleaned text
+    The safety valve limits excessive deletion: if the cleaned text
     is empty, falls below an absolute floor, or shrinks past a ratio, the raw
     text is returned unchanged.
     """
