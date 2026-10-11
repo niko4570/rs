@@ -22,24 +22,56 @@ class ParseError(Exception):
         self.raw_text = raw_text
 
 
+# Inline Markdown reduced to the visible text it renders to. The synthesizer may
+# return either the raw Markdown (``[text](url)``, ``**text**``) or its rendered
+# text, so citation matching must accept both: the visible wording is what the
+# excerpt actually asserts. The same normalization is applied to the excerpt and
+# to the evidence, so the excerpt must still occur contiguously in the source.
+#
+# Only *paired* emphasis and code markers are removed. Stripping every ``*`` and
+# backtick globally would collapse distinct strings (an excerpt ``"53"`` would
+# match evidence ``"the value 5*3 appears"``), so a literal marker in otherwise
+# plain text is preserved and only matching opening/closing pairs are dropped.
+_MD_IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+_MD_LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+_MD_UNDERSCORE_RE = re.compile(r"(?<![\w])_{1,2}(?=\S)(.+?)(?<=\S)_{1,2}(?![\w])", re.DOTALL)
+_MD_EMPHASIS_RE = re.compile(r"(?<!\*)(\*{1,3})(?=\S)([^*]+?)(?<=\S)\1(?!\*)", re.DOTALL)
+_MD_CODE_RE = re.compile(r"(?<!`)(`{1,3})(?=\S)([^`]+?)(?<=\S)\1(?!`)", re.DOTALL)
+
+
+def _normalize_markdown(text: str) -> str:
+    """Reduce inline Markdown markup to the visible text it renders to."""
+    text = _MD_IMAGE_RE.sub("", text)
+    text = _MD_LINK_RE.sub(r"\1", text)
+    text = _MD_UNDERSCORE_RE.sub(r"\1", text)
+    text = _MD_EMPHASIS_RE.sub(r"\2", text)
+    return _MD_CODE_RE.sub(r"\2", text)
+
+
 def _extract_json(text: str) -> str:
     """Extract a JSON object from text that may contain surrounding commentary."""
-    # Try direct parse first
     text = text.strip()
-    if text.startswith("{"):
-        return text
-
-    # Try to find JSON inside markdown code blocks
-    match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if match:
-        return match.group(1)
-
-    # Try to find any JSON object in the text
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    if match:
-        return match.group(0)
-
-    raise ParseError("Could not extract JSON object from response.", raw_text=text)
+    decoder = json.JSONDecoder()
+    objects: list[str] = []
+    position = 0
+    while position < len(text):
+        start = text.find("{", position)
+        if start < 0:
+            break
+        try:
+            _, end = decoder.raw_decode(text, start)
+        except json.JSONDecodeError:
+            # Do not salvage a nested object from a malformed outer object.
+            raise ParseError("Malformed JSON object in response.", raw_text=text)
+        objects.append(text[start:end])
+        position = end
+    if len(objects) > 1:
+        raise ParseError("Expected exactly one JSON object; received multiple objects.", text)
+    if not objects:
+        raise ParseError("Could not extract JSON object from response.", raw_text=text)
+    if text.startswith("{") and text[len(objects[0]):].strip():
+        raise ParseError("Unexpected trailing content after JSON object.", text)
+    return objects[0]
 
 
 def parse_summary(
@@ -84,8 +116,13 @@ def _validate_citations(
             raise ParseError("Citation validation failed: source is absent from the evidence.", raw_text)
         if citation.source_url is not None and citation.source_url not in listed_urls:
             raise ParseError("Citation validation failed: source is absent from sources.", raw_text)
-        excerpt = " ".join(citation.excerpt.split())
-        content = " ".join(evidence[citation.source_url].split())
+        excerpt = " ".join(_normalize_markdown(citation.excerpt).split())
+        content = " ".join(_normalize_markdown(evidence[citation.source_url]).split())
+        if not excerpt:
+            raise ParseError(
+                "Citation validation failed: excerpt is empty after Markdown normalization.",
+                raw_text,
+            )
         if excerpt not in content:
             raise ParseError("Citation validation failed: excerpt is absent from the source.", raw_text)
         cited_bullets.add(citation.bullet_index)

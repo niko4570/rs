@@ -164,15 +164,19 @@ Responsibilities:
 
 - Build the OpenAI-compatible `ChatOpenAI` client
 - Send the request and prepared evidence to the model
+- Request `OPENAI_OUTPUT_FORMAT`: `json_object` (compatibility default) or
+  `json_schema` (strict `SummaryResult` schema; requires endpoint support). Do not
+  automatically downgrade an unsupported format or add a synthesis repair call.
 - Return raw model output
 
 The summarizer must not perform searches, URL fetching, file access, evidence selection, planning, parsing, or validation repair. Normal research execution must make exactly one synthesis LLM call. Jev evidence selection is a separate typed judgment service (see `jev.py`) and must not become a second prose-generation or reasoning stage. Retries are acceptable only for explicitly handled transient transport/API failures and must not become additional reasoning stages.
 
 ### `research_summarizer/parser.py`
 
-Owns deterministic extraction, JSON parsing, and Pydantic validation. Invalid output should raise or return a clear parsing/validation error. Do not add another LLM call to repair malformed output.
+Owns deterministic extraction, JSON parsing, and Pydantic validation. Invalid output should raise or return a clear parsing/validation error. Reject multiple JSON
+objects even when they appear in separate Markdown blocks; never select or merge them silently. Do not add another LLM call to repair malformed output.
 The workflow must also reject source URLs that were not present in the selected or fetched evidence; local-file and failed-acquisition results have no permitted source URLs.
-When evidence is available, validate one or more citations for every summary bullet. Each citation must refer to a listed web source or the local file, and its short excerpt must occur in the matching acquired evidence. Empty or failed acquisition requires no citations.
+When evidence is available, validate one or more citations for every summary bullet. Each citation must refer to a listed web source or the local file, and its short excerpt must occur in the matching acquired evidence. Compare excerpts against the evidence's visible text, tolerating inline Markdown rendering differences (for example `[text](url)` vs `text`, or `**text**` vs `text`) so a rendered quote still counts as present. Empty or failed acquisition requires no citations.
 
 ### `research_summarizer/models.py`
 

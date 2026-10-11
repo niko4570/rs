@@ -81,6 +81,16 @@ TYPESAFE_MODEL=jev-latest
 If `TYPESAFE_API_KEY` is unset or Jev is unavailable, search evidence is used
 as-is (selection is skipped) rather than failing the request.
 
+### Synthesis output format
+
+`OPENAI_OUTPUT_FORMAT=json_object` is the compatibility default. For endpoints that
+support strict structured output, set `OPENAI_OUTPUT_FORMAT=json_schema` to request
+the `SummaryResult` schema. Unsupported schema requests fail explicitly; the workflow
+does not retry with a different format or make a repair call. JSON mode alone cannot
+be relied on when an OpenAI-compatible provider ignores its constraints. The parser
+rejects multiple objects, including separate Markdown blocks, and still validates
+sources and citation excerpts. Image/evidence cleaning does not alter this contract.
+
 ### Optional LangSmith Tracing
 
 Add these to `.env` if you want to see traces, tool calls, latency, and errors in

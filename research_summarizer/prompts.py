@@ -41,5 +41,6 @@ RULES
 - Copy each `excerpt` verbatim from the matching source content (maximum 500 characters). Do not invent or paraphrase excerpts.
 - If acquisition failed or no relevant evidence was found, return an empty `citations` list and use the bullets and caveats to explain the limitation.
 - `caveats` must be specific, not generic filler like "may be incomplete".
+- Include all fields in the same object. Do not emit a preliminary object, separate objects for individual fields, or a second revised object.
 - Return only the JSON object. Do not wrap it in markdown fences or add commentary.
 """

@@ -196,6 +196,100 @@ def test_rejects_excerpt_from_a_different_source():
         parse_summary(json.dumps(data), citation_evidence={"https://example.com": "relevant text"})
 
 
+def test_accepts_excerpt_that_renders_a_markdown_link():
+    data = _cited_result(excerpt="See official guidance for details.")
+    result = parse_summary(
+        json.dumps(data),
+        citation_evidence={
+            "https://example.com": "The rule applies. See [official guidance](https://x/g) for details."
+        },
+    )
+    assert result.citations[0].excerpt == "See official guidance for details."
+
+
+def test_accepts_excerpt_that_drops_emphasis_markers():
+    data = _cited_result(excerpt="US Regulations: The rule mandates audits.")
+    result = parse_summary(
+        json.dumps(data),
+        citation_evidence={
+            "https://example.com": "**US Regulations**: The rule mandates audits."
+        },
+    )
+    assert result.citations[0].excerpt.startswith("US Regulations")
+
+
+def test_accepts_excerpt_with_underscore_emphasis_rendered():
+    data = _cited_result(excerpt="This is italic and bold text.")
+    parse_summary(
+        json.dumps(data),
+        citation_evidence={"https://example.com": "This is _italic_ and __bold__ text."},
+    )
+
+
+def test_markdown_normalization_does_not_accept_fabricated_text():
+    data = _cited_result(excerpt="Official guidance is optional")
+    with pytest.raises(ParseError, match="excerpt is absent"):
+        parse_summary(
+            json.dumps(data),
+            citation_evidence={"https://example.com": "[Official guidance](https://x/g) applies."},
+        )
+
+
+@pytest.mark.parametrize("excerpt", ["[]()", "![]()", "   "])
+def test_rejects_excerpt_that_normalizes_to_empty(excerpt):
+    data = _cited_result(excerpt=excerpt)
+    with pytest.raises(ParseError, match="empty after Markdown normalization"):
+        parse_summary(
+            json.dumps(data),
+            citation_evidence={"https://example.com": "real evidence text"},
+        )
+
+
+def test_rejects_excerpt_that_is_only_emphasis_markers():
+    data = _cited_result(excerpt="**")
+    with pytest.raises(ParseError, match="excerpt is absent"):
+        parse_summary(
+            json.dumps(data),
+            citation_evidence={"https://example.com": "real evidence text"},
+        )
+
+
+def test_rejects_excerpt_created_by_stripping_a_literal_marker():
+    data = _cited_result(excerpt="53")
+    with pytest.raises(ParseError, match="excerpt is absent"):
+        parse_summary(
+            json.dumps(data),
+            citation_evidence={"https://example.com": "the value 5*3 appears"},
+        )
+
+
+def test_accepts_excerpt_that_keeps_a_literal_marker():
+    data = _cited_result(excerpt="5*3")
+    result = parse_summary(
+        json.dumps(data),
+        citation_evidence={"https://example.com": "the value 5*3 appears"},
+    )
+    assert result.citations[0].excerpt == "5*3"
+
+
+def test_rejects_excerpt_created_by_mixed_emphasis_and_literal_marker():
+    data = _cited_result(excerpt="53")
+    with pytest.raises(ParseError, match="excerpt is absent"):
+        parse_summary(
+            json.dumps(data),
+            citation_evidence={"https://example.com": "the value **5*3** appears"},
+        )
+
+
+def test_accepts_excerpt_that_drops_code_markers():
+    data = _cited_result(excerpt="Run the command now.")
+    result = parse_summary(
+        json.dumps(data),
+        citation_evidence={"https://example.com": "Run `the command` now."},
+    )
+    assert result.citations[0].excerpt == "Run the command now."
+
+
 def test_rejects_citation_to_source_not_listed_in_result():
     data = _cited_result()
     data["sources"] = []
@@ -220,3 +314,37 @@ def test_no_evidence_requires_no_citations():
     data = _cited_result()
     with pytest.raises(ParseError, match="source is absent"):
         parse_summary(json.dumps(data), citation_evidence={})
+
+
+@pytest.mark.parametrize("wrap", [
+    lambda a, b: a + "\n" + b,
+    lambda a, b: f"```json\n{a}\n```\n```json\n{b}\n```",
+    lambda a, b: f"Here is the result: {a}\nRevision: {b}",
+])
+def test_rejects_multiple_objects_in_all_wrappers(wrap):
+    with pytest.raises(ParseError, match="multiple objects"):
+        parse_summary(wrap(_VALID_JSON, _VALID_JSON))
+
+
+def test_rejects_fields_split_across_objects_like_live_response():
+    data = json.loads(_VALID_JSON)
+    bullets = {"summary_bullets": data.pop("summary_bullets")}
+    with pytest.raises(ParseError, match="multiple objects"):
+        parse_summary(json.dumps(bullets) + "\n" + json.dumps(data))
+
+
+def test_nested_objects_and_braces_inside_strings_are_one_object():
+    data = json.loads(_VALID_JSON)
+    data["key_details"] = 'A literal {brace} and an escaped "quote".'
+    result = parse_summary(f"```json\n{json.dumps(data)}\n```")
+    assert result.key_details == data["key_details"]
+
+
+def test_does_not_salvage_nested_object_from_malformed_outer_json():
+    with pytest.raises(ParseError, match="Malformed JSON"):
+        parse_summary('{"broken": , "nested": ' + _VALID_JSON + '}')
+
+
+def test_rejects_trailing_garbage_after_direct_json():
+    with pytest.raises(ParseError, match="trailing content"):
+        parse_summary(_VALID_JSON + " garbage")
