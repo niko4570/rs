@@ -48,8 +48,39 @@ def _normalize_markdown(text: str) -> str:
     return _MD_CODE_RE.sub(r"\2", text)
 
 
+def _matching_brace_end(text: str, start: int) -> int | None:
+    """Return the index of the ``}`` matching the ``{`` at ``start``, or ``None``."""
+    depth = 0
+    in_string = False
+    escaped = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+        elif char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
 def _extract_json(text: str) -> str:
-    """Extract a JSON object from text that may contain surrounding commentary."""
+    """Extract exactly one JSON object from text that may contain commentary.
+
+    Braces inside prose are skipped so commentary like ``{see below}`` does not hide
+    a later object. A malformed object at the very start of the response is still
+    reported as malformed rather than mined for a nested object, and the whole
+    braced region is skipped on failure so a nested object is never salvaged.
+    """
     text = text.strip()
     decoder = json.JSONDecoder()
     objects: list[str] = []
@@ -61,8 +92,13 @@ def _extract_json(text: str) -> str:
         try:
             _, end = decoder.raw_decode(text, start)
         except json.JSONDecodeError:
-            # Do not salvage a nested object from a malformed outer object.
-            raise ParseError("Malformed JSON object in response.", raw_text=text)
+            if start == 0:
+                raise ParseError("Malformed JSON object in response.", raw_text=text)
+            # Skip the brace-delimited region so nested braces are not salvaged;
+            # an unclosed brace is treated as a lone prose brace.
+            matched = _matching_brace_end(text, start)
+            position = matched + 1 if matched is not None else start + 1
+            continue
         objects.append(text[start:end])
         position = end
     if len(objects) > 1:

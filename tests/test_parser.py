@@ -36,6 +36,31 @@ def test_extract_no_json_raises():
         _extract_json("Just some regular text, no JSON here.")
 
 
+def test_extract_skips_prose_brace_before_fenced_json():
+    text = 'Note {see below}\n```json\n{"a": 1}\n```'
+    assert _extract_json(text) == '{"a": 1}'
+
+
+def test_extract_skips_prose_brace_before_bare_json():
+    text = 'First {a note} then {"a": 1}'
+    assert _extract_json(text) == '{"a": 1}'
+
+
+def test_extract_skips_unclosed_prose_brace_before_json():
+    text = 'Note {unclosed {"a": 1}'
+    assert _extract_json(text) == '{"a": 1}'
+
+
+def test_extract_does_not_salvage_nested_object_after_prose():
+    with pytest.raises(ParseError, match="Could not extract JSON"):
+        _extract_json('Comment {"broken": , "nested": {"a": 1}}')
+
+
+def test_extract_still_rejects_two_objects_separated_by_prose_braces():
+    with pytest.raises(ParseError, match="multiple objects"):
+        _extract_json('Note {x} {"a": 1} then {"b": 2}')
+
+
 # ---------------------------------------------------------------------------
 # parse_summary
 # ---------------------------------------------------------------------------
