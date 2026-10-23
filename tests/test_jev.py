@@ -196,6 +196,21 @@ def test_judge_falls_back_to_all_items_on_service_error():
     assert result.note == ""
 
 
+def test_judge_falls_back_to_all_items_on_client_initialization_error(mocker):
+    mocker.patch("research_summarizer.jev.load_dotenv")
+    mocker.patch.dict("os.environ", {"TYPESAFE_API_KEY": "test-key"})
+    mocker.patch(
+        "research_summarizer.jev.TypeSafeClient",
+        side_effect=TypeSafeAPIConnectionError("client initialization failed"),
+    )
+    items = (_item(1), _item(2))
+
+    result = judge_evidence("q", items)
+
+    assert result.items == items
+    assert result.note == ""
+
+
 def test_judge_falls_back_when_api_key_missing(mocker, no_typesafe_key):
     mock_load = mocker.patch("research_summarizer.jev.load_dotenv")
     items = (_item(1),)

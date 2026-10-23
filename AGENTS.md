@@ -108,6 +108,7 @@ It owns:
 - Local text-file reading and project-root boundary checks
 - Structured `EvidenceItem` / `EvidenceResult` acquisition and bounded text handling
 - `format_evidence` rendering of the bounded Title / URL / Content text contract
+- `format_synthesis_evidence` adds Python-assigned Source ID labels for synthesis
 
 For Tavily:
 
@@ -165,7 +166,7 @@ Responsibilities:
 - Build the OpenAI-compatible `ChatOpenAI` client
 - Send the request and prepared evidence to the model
 - Request `OPENAI_OUTPUT_FORMAT`: `json_object` (compatibility default) or
-  `json_schema` (strict `SummaryResult` schema; requires endpoint support). Do not
+  `json_schema` (strict internal `SynthesisResult` schema; requires endpoint support). Do not
   automatically downgrade an unsupported format or add a synthesis repair call.
 - Return raw model output
 
@@ -173,14 +174,21 @@ The summarizer must not perform searches, URL fetching, file access, evidence se
 
 ### `research_summarizer/parser.py`
 
-Owns deterministic extraction, JSON parsing, and Pydantic validation. Invalid output should raise or return a clear parsing/validation error. Reject multiple JSON
+Owns deterministic extraction, JSON parsing, and Pydantic validation. The workflow uses
+`parse_synthesis` to validate internal `SynthesisResult` output, resolve source IDs
+through a per-run Python-owned registry, and construct the public `SummaryResult`.
+Reject unknown IDs and model-supplied source metadata. Derive source titles and URLs
+only from acquired evidence; deduplicate listed sources by URL. Validate each excerpt
+against its exact source ID before combining records sharing a URL. `parse_summary`
+remains available for validating the public result format. Invalid output should raise or return a clear parsing/validation error. Reject multiple JSON
 objects even when they appear in separate Markdown blocks; never select or merge them silently. Do not add another LLM call to repair malformed output.
 The workflow must also reject source URLs that were not present in the selected or fetched evidence; local-file and failed-acquisition results have no permitted source URLs.
 When evidence is available, validate one or more citations for every summary bullet. Each citation must refer to a listed web source or the local file, and its short excerpt must occur in the matching acquired evidence. Compare excerpts against the evidence's visible text, tolerating inline Markdown rendering differences (for example `[text](url)` vs `text`, or `**text**` vs `text`) so a rendered quote still counts as present. Empty or failed acquisition requires no citations.
 
 ### `research_summarizer/models.py`
 
-Contains the Pydantic data models, including `SummaryResult`. Keep schemas separate from workflow logic.
+Contains the Pydantic data models, including public `SummaryResult`, internal
+`SynthesisResult` / `SynthesisCitation`, and Python-owned `SourceContent`. Keep schemas separate from workflow logic.
 `SummaryResult.citations` adds zero-based bullet references, source URLs (null for local files), and bounded evidence excerpts while preserving `summary_bullets` as strings.
 
 ### `research_summarizer/prompts.py`
@@ -191,7 +199,8 @@ Prompts must instruct the model to:
 - Avoid unsupported claims
 - Distinguish evidence from inference
 - Report uncertainty and conflicting sources
-- Include only sources present in the evidence
+- Select only provided Source IDs; never generate source titles or URLs as metadata
+- Return internal `SynthesisResult` JSON; Python restores public source metadata
 - Cite each summary bullet with an exact short excerpt from its source when evidence exists
 - Return the required JSON structure
 
@@ -220,7 +229,7 @@ Local command-line adapter. It must call the same core workflow used by the API 
 The normal contract is:
 
 ```text
-Prepared evidence → one synthesis LLM call → JSON text → parser → SummaryResult
+ID-labelled evidence → one synthesis LLM call → SynthesisResult JSON → ID resolution + validation → SummaryResult
 ```
 
 For search requests, selection happens before synthesis:
@@ -229,7 +238,13 @@ For search requests, selection happens before synthesis:
 Search evidence → Jev per-source judgments → code thresholds → selected evidence → synthesis
 ```
 
-Evidence is acquired as bounded, source-attributed `EvidenceItem` records and rendered through `format_evidence`. Evidence formatting may evolve, but it must remain clear, bounded, and source-attributed. If the evidence format changes, update the related tests and prompt expectations together. Jev judgments are probabilities, not evidence, and are not passed to the synthesizer as facts.
+Evidence is acquired as bounded, source-attributed `EvidenceItem` records and rendered through `format_evidence`. For synthesis, Python assigns per-run IDs (`S1`, `S2`, ...) to the selected/fetched
+sources, including local files. The model returns only IDs and exact excerpts in
+citations; it does not return a `sources` array or citation URLs. Python reconstructs
+those public fields. Empty/failed acquisition has no valid IDs. This guarantees source
+identity, not semantic support for all summary claims.
+
+Evidence formatting may evolve, but it must remain clear, bounded, and source-attributed. If the evidence format changes, update the related tests and prompt expectations together. Jev judgments are probabilities, not evidence, and are not passed to the synthesizer as facts.
 
 The LLM is not a source of new facts. It may synthesize, compare, and qualify information present in the evidence, but it must not claim that it performed additional searches or consulted sources that were not supplied.
 

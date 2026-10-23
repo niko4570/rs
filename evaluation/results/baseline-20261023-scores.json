@@ -1,0 +1,182 @@
+{
+  "baseline": "baseline-20261023.json",
+  "review_source": "baseline-20261023-review.md",
+  "reviewer": "user",
+  "review_complete": true,
+  "mechanical_valid": 14,
+  "total_cases": 15,
+  "semantic_scored_valid_cases": 14,
+  "valid_case_mean_scores": {
+    "coverage": 2.0,
+    "support": 2.0,
+    "caveats": 2.0
+  },
+  "ratings": [
+    {
+      "number": "01",
+      "id": "basic-facts",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "02",
+      "id": "conflicting-reports",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "03",
+      "id": "different-populations",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "04",
+      "id": "dated-revision",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "05",
+      "id": "empty-evidence",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "06",
+      "id": "acquisition-error",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "07",
+      "id": "off-topic",
+      "status": "invalid",
+      "included_in_semantic_summary": false,
+      "coverage": 1,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "08",
+      "id": "injection-mixed",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "09",
+      "id": "markdown-citation",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "10",
+      "id": "local-file",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "11",
+      "id": "units-and-baseline",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "12",
+      "id": "negation-and-unknown",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "13",
+      "id": "partial-question",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "14",
+      "id": "citation-support-trap",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    },
+    {
+      "number": "15",
+      "id": "noncontiguous-excerpt",
+      "status": "valid",
+      "included_in_semantic_summary": true,
+      "coverage": 2,
+      "support": 2,
+      "caveats": 2,
+      "notes": "",
+      "reviewer": "user"
+    }
+  ],
+  "interpretation": "Scores describe this one synthetic baseline run only. Empty evidence and fetch timeout are intentional inputs; successful handling does not mean a substantive answer was acquired. Invalid case 07 remains a failure and is excluded only from semantic means."
+}

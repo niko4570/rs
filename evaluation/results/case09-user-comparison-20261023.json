@@ -1,0 +1,52 @@
+{
+  "case": "markdown-citation",
+  "source": "## Deployment\nThe package needs **8 GB RAM** and [Python 3.11](https://example.com/python).\nOffline mode supports `text_only` files. GPU support was not tested.",
+  "production_parser_validation": "PASS: schema, allowed source URLs, four bullet citations, Markdown-normalized contiguous excerpts",
+  "rows": [
+    {
+      "run": "旧提示词首次基线",
+      "file": "baseline-20261023.json",
+      "prompt_sha256": "9d4ffe8f8861e0f0c1b1f73c77b955c72305026382bc207232982a58fbfbe4a3",
+      "bullet": "离线模式支持 `text_only` 文件。",
+      "status": "valid",
+      "seconds": 6.747
+    },
+    {
+      "run": "新提示词首次测试",
+      "file": "candidate-citation-rules-20261023.json",
+      "prompt_sha256": "573971e10dc5d7bd9c8c104f79291acadbd35691f2376f97f9d098dc6c7cb935",
+      "bullet": "离线模式仅支持 `text_only` 类型的文件，这构成一项功能限制。",
+      "status": "valid",
+      "seconds": 7.769
+    },
+    {
+      "run": "新提示词单例重测",
+      "file": "case09-retest-20261023.json",
+      "prompt_sha256": "573971e10dc5d7bd9c8c104f79291acadbd35691f2376f97f9d098dc6c7cb935",
+      "bullet": "离线模式只支持 `text_only` 文件，因此非纯文本内容在离线场景下没有说明可用性，这是明确的适用范围限制。",
+      "status": "valid",
+      "seconds": 10.643
+    },
+    {
+      "run": "旧提示词单例重测",
+      "file": "case09-old-prompt-retest-20261023.json",
+      "prompt_sha256": "9d4ffe8f8861e0f0c1b1f73c77b955c72305026382bc207232982a58fbfbe4a3",
+      "bullet": "离线模式仅支持 `text_only` 文件。",
+      "status": "valid",
+      "seconds": 8.028
+    },
+    {
+      "run": "用户提供的新会话输出（简化提示词）",
+      "file": "case09-user-provided-20261023.json",
+      "prompt_sha256": null,
+      "bullet": "离线模式支持 text_only 文件。",
+      "status": "valid",
+      "seconds": null,
+      "model": null,
+      "metadata_note": "Model/version, system context, temperature, retries, latency and raw response metadata were not supplied; prompt below is the suggested prompt, not independently verified execution input."
+    }
+  ],
+  "semantic_observation": "User-provided output does not add exclusivity; key_details and caveats explicitly preserve uncertainty about other formats and untested GPU support. This is a qualitative review of this output, not a model-wide score.",
+  "limits": "Simplified prompt differs from both production prompts; user-run model/config are unreported; one user output and two calls per production prompt cannot establish model ranking or prompt causation. No additional API calls in this comparison.",
+  "phase_two_conclusion": "Deterministic citation validation verifies provenance/text occurrence, not semantic entailment. Production outputs show supports→only supports under both old and new prompts. User-provided output shows the specific mistake is avoidable in this example, but does not identify whether model, prompt or their interaction caused the difference."
+}

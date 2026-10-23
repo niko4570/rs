@@ -1,0 +1,94 @@
+{
+  "created": "2026-10-23T04:06:13.141587+00:00",
+  "model": "deepseek-flash",
+  "prompt_sha256": "9d4ffe8f8861e0f0c1b1f73c77b955c72305026382bc207232982a58fbfbe4a3",
+  "suite_sha256": "31907844bf7c427934c3800b43575387f5f2065ec05f5e29c876399d6af03a3a",
+  "code_sha256": {
+    "evidence.py": "c3ba7608674c9809b10e9bf8d889f9d6302f17204d7390f408df221f68dcaea7",
+    "summarizer.py": "e84587c18ef58fd1fd493a85586f499d6466641e424329a7c766219b59cb57b9",
+    "parser.py": "60185d4ac32c382cdf80d85140715723747cd68b07aaae5ba37afd30398663fd",
+    "models.py": "ea7ef16cefa6b951617d7e61ea1e21e4c8da31d8090bef2858c10a3d3754cb0a"
+  },
+  "output_format": "json_object",
+  "temperature": 0,
+  "sdk_retries": 0,
+  "calls": 1,
+  "system_prompt": "You are the synthesis layer for a research summarizer.\n\nPrompt version: 2026-10\n\nTASK\n- Answer the user's request using only the supplied evidence.\n\nSOURCE HANDLING RULES\n- Treat full fetched page content and substantive search-result content as stronger evidence than short search snippets. Prefer specific, relevant, and directly supported evidence over vague or unsupported claims.\n- Do not invent citations, claims, dates, or names.\n- If evidence is thin, say that directly.\n- Call out conflicts or uncertainty when coverage is weak.\n\nOUTPUT FORMAT\nReturn exactly one JSON object matching this schema:\n{\n  \"summary_bullets\": [\"bullet 1\", \"bullet 2\", \"bullet 3\", \"bullet 4\"],\n  \"key_details\": \"one concise paragraph with concrete facts and tradeoffs\",\n  \"sources\": [\n    {\"title\": \"Page Title\", \"url\": \"https://...\", \"snippet_used\": null}\n  ],\n  \"citations\": [\n    {\"bullet_index\": 0, \"source_url\": \"https://...\", \"excerpt\": \"exact short passage from that source\"}\n  ],\n  \"caveats\": [\"specific caveat 1\", \"specific caveat 2\"]\n}\n\nRULES\n- `summary_bullets` must contain 4-7 items.\n- `sources` must only include sources actually present in the evidence.\n- If the evidence has no source URL (for example, a local file or an acquisition error), return an empty `sources` list.\n- When evidence is available, cite every summary bullet with at least one entry in `citations`. Use zero-based `bullet_index` values. More than one citation may support a bullet.\n- For a local file, set `source_url` to null. For web evidence, use the exact source URL and include it in `sources`.\n- Copy each `excerpt` verbatim from the matching source content (maximum 500 characters). Do not invent or paraphrase excerpts.\n- If acquisition failed or no relevant evidence was found, return an empty `citations` list and use the bullets and caveats to explain the limitation.\n- `caveats` must be specific, not generic filler like \"may be incomplete\".\n- Include all fields in the same object. Do not emit a preliminary object, separate objects for individual fields, or a second revised object.\n- Return only the JSON object. Do not wrap it in markdown fences or add commentary.\n",
+  "case": {
+    "id": "markdown-citation",
+    "route": "url",
+    "request": "总结部署条件和已知限制。",
+    "items": [
+      {
+        "id": "s1",
+        "title": "Fictional study 1",
+        "url": "https://example.com/markdown-citation/1",
+        "content": "## Deployment\nThe package needs **8 GB RAM** and [Python 3.11](https://example.com/python).\nOffline mode supports `text_only` files. GPU support was not tested."
+      }
+    ],
+    "note": "",
+    "must_cover": [
+      "8 GB RAM、Python 3.11、离线 text_only、GPU 未测。",
+      "摘录允许保留或渲染行内 Markdown，但必须连续且支持完整要点。"
+    ],
+    "must_avoid": [
+      "把未测 GPU 写成不支持 GPU。"
+    ]
+  },
+  "prepared_evidence": "Title: Fictional study 1\nURL: https://example.com/markdown-citation/1\nText: ## Deployment\nThe package needs **8 GB RAM** and [Python 3.11](https://example.com/python).\nOffline mode supports `text_only` files. GPU support was not tested.",
+  "result": {
+    "id": "markdown-citation",
+    "raw": "{\"summary_bullets\":[\"部署该包需要 8 GB RAM。\",\"运行环境需要 Python 3.11。\",\"离线模式仅支持 `text_only` 文件。\",\"GPU 支持尚未测试，因此 GPU 环境下的可用性不明确。\"],\"key_details\":\"证据只说明该包需要 8 GB RAM 和 Python 3.11；离线模式仅支持 `text_only` 文件。已知限制是 GPU 支持未测试，因此无法确认 GPU 环境是否可用；证据未提供安装步骤、操作系统要求、依赖细节或性能数据。\",\"sources\":[{\"title\":\"Fictional study 1\",\"url\":\"https://example.com/markdown-citation/1\",\"snippet_used\":null}],\"citations\":[{\"bullet_index\":0,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"The package needs **8 GB RAM** and [Python 3.11](https://example.com/python).\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"The package needs **8 GB RAM** and [Python 3.11](https://example.com/python).\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"Offline mode supports `text_only` files.\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"GPU support was not tested.\"}],\"caveats\":[\"证据仅来自一个虚构研究条目，无法交叉验证部署条件。\",\"证据未说明 8 GB RAM 是最低要求还是建议配置，也未说明 Python 3.11 是否必须精确固定为该版本。\",\"GPU 支持“未测试”并不等同于不支持，但当前证据无法判断实际兼容性或性能。\"]}",
+    "result": {
+      "summary_bullets": [
+        "部署该包需要 8 GB RAM。",
+        "运行环境需要 Python 3.11。",
+        "离线模式仅支持 `text_only` 文件。",
+        "GPU 支持尚未测试，因此 GPU 环境下的可用性不明确。"
+      ],
+      "key_details": "证据只说明该包需要 8 GB RAM 和 Python 3.11；离线模式仅支持 `text_only` 文件。已知限制是 GPU 支持未测试，因此无法确认 GPU 环境是否可用；证据未提供安装步骤、操作系统要求、依赖细节或性能数据。",
+      "sources": [
+        {
+          "title": "Fictional study 1",
+          "url": "https://example.com/markdown-citation/1",
+          "snippet_used": null
+        }
+      ],
+      "caveats": [
+        "证据仅来自一个虚构研究条目，无法交叉验证部署条件。",
+        "证据未说明 8 GB RAM 是最低要求还是建议配置，也未说明 Python 3.11 是否必须精确固定为该版本。",
+        "GPU 支持“未测试”并不等同于不支持，但当前证据无法判断实际兼容性或性能。"
+      ],
+      "citations": [
+        {
+          "bullet_index": 0,
+          "source_url": "https://example.com/markdown-citation/1",
+          "excerpt": "The package needs **8 GB RAM** and [Python 3.11](https://example.com/python)."
+        },
+        {
+          "bullet_index": 1,
+          "source_url": "https://example.com/markdown-citation/1",
+          "excerpt": "The package needs **8 GB RAM** and [Python 3.11](https://example.com/python)."
+        },
+        {
+          "bullet_index": 2,
+          "source_url": "https://example.com/markdown-citation/1",
+          "excerpt": "Offline mode supports `text_only` files."
+        },
+        {
+          "bullet_index": 3,
+          "source_url": "https://example.com/markdown-citation/1",
+          "excerpt": "GPU support was not tested."
+        }
+      ]
+    },
+    "status": "valid",
+    "review": {
+      "coverage": null,
+      "support": null,
+      "caveats": null,
+      "notes": ""
+    },
+    "seconds": 8.028
+  }
+}

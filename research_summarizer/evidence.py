@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -31,6 +32,8 @@ from tavily.errors import (
     UsageLimitExceededError,
 )
 from tavily.errors import TimeoutError as TavilyTimeoutError
+
+from research_summarizer.models import SourceContent
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SUPPORTED_TEXT_EXTENSIONS = frozenset({".txt", ".md", ".markdown"})
@@ -395,6 +398,17 @@ def format_evidence(result: EvidenceResult) -> str:
     return "\n\n".join(
         f"Title: {item.title}\nURL: {item.url}\nContent: {item.content}"
         for item in result.items
+    )
+
+
+def format_synthesis_evidence(sources: Mapping[str, SourceContent], note: str = "") -> str:
+    """Label bounded evidence with the only source IDs the model may select."""
+    if not sources:
+        return note or "No evidence available."
+    return "\n\n".join(
+        f"Source ID: {source_id}\nTitle: {source.title or ''}\n"
+        f"URL: {source.url or '(local file)'}\nContent: {source.content}"
+        for source_id, source in sources.items()
     )
 
 

@@ -1,0 +1,111 @@
+{
+  "created": "2026-10-23T04:00:22.694016+00:00",
+  "model": "deepseek-flash",
+  "prompt_sha256": "573971e10dc5d7bd9c8c104f79291acadbd35691f2376f97f9d098dc6c7cb935",
+  "suite_sha256": "31907844bf7c427934c3800b43575387f5f2065ec05f5e29c876399d6af03a3a",
+  "code_sha256": {
+    "evidence.py": "c3ba7608674c9809b10e9bf8d889f9d6302f17204d7390f408df221f68dcaea7",
+    "summarizer.py": "e84587c18ef58fd1fd493a85586f499d6466641e424329a7c766219b59cb57b9",
+    "parser.py": "60185d4ac32c382cdf80d85140715723747cd68b07aaae5ba37afd30398663fd",
+    "models.py": "ea7ef16cefa6b951617d7e61ea1e21e4c8da31d8090bef2858c10a3d3754cb0a"
+  },
+  "output_format": "json_object",
+  "temperature": 0,
+  "sdk_retries": 0,
+  "calls": 1,
+  "case": {
+    "id": "markdown-citation",
+    "route": "url",
+    "request": "总结部署条件和已知限制。",
+    "items": [
+      {
+        "id": "s1",
+        "title": "Fictional study 1",
+        "url": "https://example.com/markdown-citation/1",
+        "content": "## Deployment\nThe package needs **8 GB RAM** and [Python 3.11](https://example.com/python).\nOffline mode supports `text_only` files. GPU support was not tested."
+      }
+    ],
+    "note": "",
+    "must_cover": [
+      "8 GB RAM、Python 3.11、离线 text_only、GPU 未测。",
+      "摘录允许保留或渲染行内 Markdown，但必须连续且支持完整要点。"
+    ],
+    "must_avoid": [
+      "把未测 GPU 写成不支持 GPU。"
+    ]
+  },
+  "prepared_evidence": "Title: Fictional study 1\nURL: https://example.com/markdown-citation/1\nText: ## Deployment\nThe package needs **8 GB RAM** and [Python 3.11](https://example.com/python).\nOffline mode supports `text_only` files. GPU support was not tested.",
+  "result": {
+    "id": "markdown-citation",
+    "raw": "{\"summary_bullets\":[\"部署至少需要 8 GB 内存，并且依赖 Python 3.11 运行环境。\",\"离线模式只支持 `text_only` 文件，因此非纯文本内容在离线场景下没有说明可用性，这是明确的适用范围限制。\",\"GPU 支持“未测试”，即是否有 GPU 加速、兼容哪些显卡、性能如何都没有结论，不能据此判断支持或不支持。\",\"来源只给出内存与 Python 版本两项条件，没有提及操作系统、磁盘空间、网络端口、其他依赖包或安装步骤。\",\"整体证据非常单薄：只有一份来源的一个 Deployment 小节，因此下面的已知限制很可能并不完整。\"],\"key_details\":\"唯一来源（Fictional study 1）的 Deployment 小节给出的硬性条件是 8 GB RAM 与 Python 3.11（原文将 Python 3.11 链接到 example.com/python）。功能边界方面，离线模式仅支持 `text_only` 文件；GPU 支持则明确标注为“未测试”，属于未知而非已知不支持。取舍在于：文本类离线场景看起来可用，但任何需要非文本文件或 GPU 加速的场景都缺少依据。除这两项外，操作系统、磁盘、网络与依赖管理等信息均缺失，无法据此写出完整部署清单。\",\"sources\":[{\"title\":\"Fictional study 1\",\"url\":\"https://example.com/markdown-citation/1\",\"snippet_used\":null}],\"citations\":[{\"bullet_index\":0,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"The package needs **8 GB RAM** and [Python 3.11](https://example.com/python).\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"Offline mode supports `text_only` files.\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"GPU support was not tested.\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"The package needs **8 GB RAM** and [Python 3.11](https://example.com/python).\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"## Deployment\"},{\"bullet_index\":4,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"## Deployment\"},{\"bullet_index\":4,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"Offline mode supports `text_only` files.\"}],\"caveats\":[\"证据只有一份来源的一个小节（标题为“Fictional study 1”，URL 位于 example.com），没有第二份来源可交叉验证部署条件。\",\"“8 GB RAM”未区分是最低要求还是推荐配置，也没有说明是否随数据规模变化。\",\"“GPU support was not tested”只表示未测试，不能推断为不支持，也不能推断为可用。\",\"`text_only` 的具体含义未定义：未说明支持哪些扩展名、编码，也未说明是否包含 PDF 等含文本的非纯文本格式。\",\"缺少操作系统版本、磁盘空间、Python 包版本锁定、安装命令与离线资源获取方式等常见部署信息。\"]}",
+    "result": {
+      "summary_bullets": [
+        "部署至少需要 8 GB 内存，并且依赖 Python 3.11 运行环境。",
+        "离线模式只支持 `text_only` 文件，因此非纯文本内容在离线场景下没有说明可用性，这是明确的适用范围限制。",
+        "GPU 支持“未测试”，即是否有 GPU 加速、兼容哪些显卡、性能如何都没有结论，不能据此判断支持或不支持。",
+        "来源只给出内存与 Python 版本两项条件，没有提及操作系统、磁盘空间、网络端口、其他依赖包或安装步骤。",
+        "整体证据非常单薄：只有一份来源的一个 Deployment 小节，因此下面的已知限制很可能并不完整。"
+      ],
+      "key_details": "唯一来源（Fictional study 1）的 Deployment 小节给出的硬性条件是 8 GB RAM 与 Python 3.11（原文将 Python 3.11 链接到 example.com/python）。功能边界方面，离线模式仅支持 `text_only` 文件；GPU 支持则明确标注为“未测试”，属于未知而非已知不支持。取舍在于：文本类离线场景看起来可用，但任何需要非文本文件或 GPU 加速的场景都缺少依据。除这两项外，操作系统、磁盘、网络与依赖管理等信息均缺失，无法据此写出完整部署清单。",
+      "sources": [
+        {
+          "title": "Fictional study 1",
+          "url": "https://example.com/markdown-citation/1",
+          "snippet_used": null
+        }
+      ],
+      "caveats": [
+        "证据只有一份来源的一个小节（标题为“Fictional study 1”，URL 位于 example.com），没有第二份来源可交叉验证部署条件。",
+        "“8 GB RAM”未区分是最低要求还是推荐配置，也没有说明是否随数据规模变化。",
+        "“GPU support was not tested”只表示未测试，不能推断为不支持，也不能推断为可用。",
+        "`text_only` 的具体含义未定义：未说明支持哪些扩展名、编码，也未说明是否包含 PDF 等含文本的非纯文本格式。",
+        "缺少操作系统版本、磁盘空间、Python 包版本锁定、安装命令与离线资源获取方式等常见部署信息。"
+      ],
+      "citations": [
+        {
+          "bullet_index": 0,
+          "source_url": "https://example.com/markdown-citation/1",
+          "excerpt": "The package needs **8 GB RAM** and [Python 3.11](https://example.com/python)."
+        },
+        {
+          "bullet_index": 1,
+          "source_url": "https://example.com/markdown-citation/1",
+          "excerpt": "Offline mode supports `text_only` files."
+        },
+        {
+          "bullet_index": 2,
+          "source_url": "https://example.com/markdown-citation/1",
+          "excerpt": "GPU support was not tested."
+        },
+        {
+          "bullet_index": 3,
+          "source_url": "https://example.com/markdown-citation/1",
+          "excerpt": "The package needs **8 GB RAM** and [Python 3.11](https://example.com/python)."
+        },
+        {
+          "bullet_index": 3,
+          "source_url": "https://example.com/markdown-citation/1",
+          "excerpt": "## Deployment"
+        },
+        {
+          "bullet_index": 4,
+          "source_url": "https://example.com/markdown-citation/1",
+          "excerpt": "## Deployment"
+        },
+        {
+          "bullet_index": 4,
+          "source_url": "https://example.com/markdown-citation/1",
+          "excerpt": "Offline mode supports `text_only` files."
+        }
+      ]
+    },
+    "status": "valid",
+    "review": {
+      "coverage": null,
+      "support": null,
+      "caveats": null,
+      "notes": ""
+    },
+    "seconds": 10.643
+  }
+}

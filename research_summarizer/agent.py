@@ -8,7 +8,7 @@ Top-level data flow:
       -> Jev selection         (judge_evidence, search only)
       -> Evidence
       -> Summarizer            (one LLM call)
-      -> Parser                (parse_summary)
+      -> Parser                (parse_synthesis + source ID resolution)
       -> SummaryResult
 """
 
@@ -29,12 +29,12 @@ from research_summarizer.evidence import (
     EvidenceResult,
     acquire_evidence,
     clear_fetch_cache,
-    format_evidence,
+    format_synthesis_evidence,
     search_web_items,
 )
 from research_summarizer.jev import judge_evidence
-from research_summarizer.models import SummaryResult
-from research_summarizer.parser import parse_summary
+from research_summarizer.models import SourceContent, SummaryResult
+from research_summarizer.parser import parse_synthesis
 from research_summarizer.summarizer import build_model, summarize_evidence
 
 # Progress callback type: callable taking (stage, message)
@@ -80,34 +80,30 @@ def run_agent(
         raise ValueError(f"Unknown action: {action}")
     _progress(on_progress, "execute", f"{action}: {tool_input}")
 
+    sources: dict[str, SourceContent] = {}
     if action == "search":
         selected = _acquire_search_evidence(request, tool_input, on_progress)
-        evidence = format_evidence(selected)
-        allowed_urls = {item.url for item in selected.items}
-        citation_evidence: dict[str | None, str] = {}
-        for item in selected.items:
-            citation_evidence[item.url] = (
-                f"{citation_evidence[item.url]}\n{item.content}"
-                if item.url in citation_evidence else item.content
-            )
+        sources = {
+            f"S{index}": SourceContent(title=item.title, url=item.url, content=item.content)
+            for index, item in enumerate(selected.items, start=1)
+        }
+        evidence = format_synthesis_evidence(sources, selected.note or "")
     else:
-        evidence = acquire_evidence(action, tool_input)
-        allowed_urls = (
-            {tool_input} if action == "fetch" and not evidence.startswith("[FETCH_ERROR]") else set()
-        )
-        if action == "fetch" and allowed_urls:
-            citation_evidence = {tool_input: evidence.split("\nText: ", 1)[-1]}
-        elif action == "read_file" and evidence.strip() and not evidence.startswith(FILE_ERROR_PREFIX):
-            citation_evidence = {None: evidence}
-        else:
-            citation_evidence = {}
+        acquired = acquire_evidence(action, tool_input)
+        if action == "fetch" and not acquired.startswith("[FETCH_ERROR]"):
+            title = re.search(r"^Title: (.*)$", acquired, flags=re.MULTILINE)
+            sources["S1"] = SourceContent(
+                title=title.group(1) if title else None, url=tool_input,
+                content=acquired.split("\nText: ", 1)[-1],
+            )
+        elif action == "read_file" and acquired.strip() and not acquired.startswith(FILE_ERROR_PREFIX):
+            sources["S1"] = SourceContent(content=acquired)
+        evidence = format_synthesis_evidence(sources, acquired)
 
     _progress(on_progress, "summarize", "Summarizing evidence...")
     raw_answer = summarize_evidence(request, evidence, model)
 
-    result = parse_summary(
-        raw_answer, allowed_urls=allowed_urls, citation_evidence=citation_evidence
-    )
+    result = parse_synthesis(raw_answer, sources)
 
     _progress(on_progress, "done", "Done")
     return result

@@ -1,0 +1,880 @@
+{
+  "created": "2026-10-23T02:50:53.595098+00:00",
+  "revision": "e2083757929a855c9d01dcbeee3ca72867fd9ce0",
+  "suite_sha256": "31907844bf7c427934c3800b43575387f5f2065ec05f5e29c876399d6af03a3a",
+  "prompt_sha256": "9d4ffe8f8861e0f0c1b1f73c77b955c72305026382bc207232982a58fbfbe4a3",
+  "code_sha256": {
+    "evidence.py": "c3ba7608674c9809b10e9bf8d889f9d6302f17204d7390f408df221f68dcaea7",
+    "summarizer.py": "e84587c18ef58fd1fd493a85586f499d6466641e424329a7c766219b59cb57b9",
+    "parser.py": "60185d4ac32c382cdf80d85140715723747cd68b07aaae5ba37afd30398663fd",
+    "models.py": "ea7ef16cefa6b951617d7e61ea1e21e4c8da31d8090bef2858c10a3d3754cb0a"
+  },
+  "model": "deepseek-flash",
+  "output_format": "json_object",
+  "temperature": 0,
+  "sdk_retries": 0,
+  "results": [
+    {
+      "id": "basic-facts",
+      "raw": "{\"summary_bullets\": [\"Cedar 试点共运行四周，参与人数为 40 人。\", \"任务时间中位数从 20 分钟下降到 15 分钟，减少了 5 分钟。\", \"该试点没有设置对照组，因此无法把任务时间的变化明确归因于 Cedar 本身。\", \"研究未测量满意度，所以缺少用户体验或接受度方面的结果。\", \"现有证据只有一份简短的研究摘要，未报告统计显著性、参与者构成及其他指标。\"], \"key_details\": \"根据唯一的证据来源，Cedar 试点为期四周、共有 40 名参与者，核心结果是任务时间中位数由 20 分钟降至 15 分钟。这属于试点前后的简单对比：由于研究没有对照组，时间缩短可能来自学习效应、流程变化或其他混杂因素，无法单独归因于 Cedar。同时，满意度没有被测量，因此无法判断体验层面的收益或代价；证据中也没有提到统计检验、样本特征或除任务时间外的任何指标。\", \"sources\": [{\"title\": \"Fictional study 1\", \"url\": \"https://example.com/basic-facts/1\", \"snippet_used\": null}], \"citations\": [{\"bullet_index\": 0, \"source_url\": \"https://example.com/basic-facts/1\", \"excerpt\": \"Cedar pilot ran for four weeks with 40 participants.\"}, {\"bullet_index\": 1, \"source_url\": \"https://example.com/basic-facts/1\", \"excerpt\": \"Median task time fell from 20 to 15 minutes.\"}, {\"bullet_index\": 2, \"source_url\": \"https://example.com/basic-facts/1\", \"excerpt\": \"There was no control group.\"}, {\"bullet_index\": 3, \"source_url\": \"https://example.com/basic-facts/1\", \"excerpt\": \"Satisfaction was not measured.\"}, {\"bullet_index\": 4, \"source_url\": \"https://example.com/basic-facts/1\", \"excerpt\": \"Cedar pilot ran for four weeks with 40 participants. Median task time fell from 20 to 15 minutes. There was no control group. Satisfaction was not measured.\"}], \"caveats\": [\"证据中没有提到统计显著性检验，因此仅凭中位数从 20 分钟降到 15 分钟，无法判断这一差异是否超出随机波动。\", \"研究缺少对照组，而且没有报告参与者的招募方式、背景特征或任务类型，所以外部效度和因果归因都受限。\", \"满意度未被测量，其他可用性、错误率、采用率等指标也完全没有提及，因此结果只覆盖任务时间这一维度。\", \"全部结论仅来自单一来源（example.com 上的“Fictional study 1”），没有独立复现或交叉验证，并且该来源本身标注为虚构研究。\"]}",
+      "result": {
+        "summary_bullets": [
+          "Cedar 试点共运行四周，参与人数为 40 人。",
+          "任务时间中位数从 20 分钟下降到 15 分钟，减少了 5 分钟。",
+          "该试点没有设置对照组，因此无法把任务时间的变化明确归因于 Cedar 本身。",
+          "研究未测量满意度，所以缺少用户体验或接受度方面的结果。",
+          "现有证据只有一份简短的研究摘要，未报告统计显著性、参与者构成及其他指标。"
+        ],
+        "key_details": "根据唯一的证据来源，Cedar 试点为期四周、共有 40 名参与者，核心结果是任务时间中位数由 20 分钟降至 15 分钟。这属于试点前后的简单对比：由于研究没有对照组，时间缩短可能来自学习效应、流程变化或其他混杂因素，无法单独归因于 Cedar。同时，满意度没有被测量，因此无法判断体验层面的收益或代价；证据中也没有提到统计检验、样本特征或除任务时间外的任何指标。",
+        "sources": [
+          {
+            "title": "Fictional study 1",
+            "url": "https://example.com/basic-facts/1",
+            "snippet_used": null
+          }
+        ],
+        "caveats": [
+          "证据中没有提到统计显著性检验，因此仅凭中位数从 20 分钟降到 15 分钟，无法判断这一差异是否超出随机波动。",
+          "研究缺少对照组，而且没有报告参与者的招募方式、背景特征或任务类型，所以外部效度和因果归因都受限。",
+          "满意度未被测量，其他可用性、错误率、采用率等指标也完全没有提及，因此结果只覆盖任务时间这一维度。",
+          "全部结论仅来自单一来源（example.com 上的“Fictional study 1”），没有独立复现或交叉验证，并且该来源本身标注为虚构研究。"
+        ],
+        "citations": [
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/basic-facts/1",
+            "excerpt": "Cedar pilot ran for four weeks with 40 participants."
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/basic-facts/1",
+            "excerpt": "Median task time fell from 20 to 15 minutes."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/basic-facts/1",
+            "excerpt": "There was no control group."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/basic-facts/1",
+            "excerpt": "Satisfaction was not measured."
+          },
+          {
+            "bullet_index": 4,
+            "source_url": "https://example.com/basic-facts/1",
+            "excerpt": "Cedar pilot ran for four weeks with 40 participants. Median task time fell from 20 to 15 minutes. There was no control group. Satisfaction was not measured."
+          }
+        ]
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 8.728
+    },
+    {
+      "id": "conflicting-reports",
+      "raw": "{\"summary_bullets\":[\"Report A stated that 90 of 100 attempts succeeded in May, a 90% success rate.\",\"Report B stated that 80 of 100 attempts succeeded in May, an 80% success rate.\",\"Report A's reported success rate was 10 percentage points higher than Report B's.\",\"The absolute gap was 10 successful attempts out of 100.\",\"Neither report describes the protocol, so the reason for the difference and whether the rates are comparable are unclear.\"],\"key_details\":\"In May, Report A reported 90 successes out of 100 attempts (90%), while Report B reported 80 successes out of 100 attempts (80%). This is a 10-percentage-point difference, equivalent to 10 more successful attempts out of 100 in Report A. Both reports leave the protocol undescribed, so the evidence supports the numerical comparison but not an explanation for the gap or a judgment that the two rates came from comparable procedures.\",\"sources\":[{\"title\":\"Fictional study 1\",\"url\":\"https://example.com/conflicting-reports/1\",\"snippet_used\":null},{\"title\":\"Fictional study 2\",\"url\":\"https://example.com/conflicting-reports/2\",\"snippet_used\":null}],\"citations\":[{\"bullet_index\":0,\"source_url\":\"https://example.com/conflicting-reports/1\",\"excerpt\":\"Report A: In May, 90 of 100 attempts succeeded (90%).\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/conflicting-reports/2\",\"excerpt\":\"Report B: In May, 80 of 100 attempts succeeded (80%).\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/conflicting-reports/1\",\"excerpt\":\"Report A: In May, 90 of 100 attempts succeeded (90%).\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/conflicting-reports/2\",\"excerpt\":\"Report B: In May, 80 of 100 attempts succeeded (80%).\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/conflicting-reports/1\",\"excerpt\":\"Report A: In May, 90 of 100 attempts succeeded (90%).\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/conflicting-reports/2\",\"excerpt\":\"Report B: In May, 80 of 100 attempts succeeded (80%).\"},{\"bullet_index\":4,\"source_url\":\"https://example.com/conflicting-reports/1\",\"excerpt\":\"The protocol is not described.\"},{\"bullet_index\":4,\"source_url\":\"https://example.com/conflicting-reports/2\",\"excerpt\":\"The protocol is not described.\"}],\"caveats\":[\"The reports provide only aggregate May counts and do not include per-attempt or subgroup data.\",\"Because neither report describes its protocol, the 10-percentage-point difference cannot be attributed to protocol differences or assumed to reflect comparable conditions.\"]}",
+      "result": {
+        "summary_bullets": [
+          "Report A stated that 90 of 100 attempts succeeded in May, a 90% success rate.",
+          "Report B stated that 80 of 100 attempts succeeded in May, an 80% success rate.",
+          "Report A's reported success rate was 10 percentage points higher than Report B's.",
+          "The absolute gap was 10 successful attempts out of 100.",
+          "Neither report describes the protocol, so the reason for the difference and whether the rates are comparable are unclear."
+        ],
+        "key_details": "In May, Report A reported 90 successes out of 100 attempts (90%), while Report B reported 80 successes out of 100 attempts (80%). This is a 10-percentage-point difference, equivalent to 10 more successful attempts out of 100 in Report A. Both reports leave the protocol undescribed, so the evidence supports the numerical comparison but not an explanation for the gap or a judgment that the two rates came from comparable procedures.",
+        "sources": [
+          {
+            "title": "Fictional study 1",
+            "url": "https://example.com/conflicting-reports/1",
+            "snippet_used": null
+          },
+          {
+            "title": "Fictional study 2",
+            "url": "https://example.com/conflicting-reports/2",
+            "snippet_used": null
+          }
+        ],
+        "caveats": [
+          "The reports provide only aggregate May counts and do not include per-attempt or subgroup data.",
+          "Because neither report describes its protocol, the 10-percentage-point difference cannot be attributed to protocol differences or assumed to reflect comparable conditions."
+        ],
+        "citations": [
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/conflicting-reports/1",
+            "excerpt": "Report A: In May, 90 of 100 attempts succeeded (90%)."
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/conflicting-reports/2",
+            "excerpt": "Report B: In May, 80 of 100 attempts succeeded (80%)."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/conflicting-reports/1",
+            "excerpt": "Report A: In May, 90 of 100 attempts succeeded (90%)."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/conflicting-reports/2",
+            "excerpt": "Report B: In May, 80 of 100 attempts succeeded (80%)."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/conflicting-reports/1",
+            "excerpt": "Report A: In May, 90 of 100 attempts succeeded (90%)."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/conflicting-reports/2",
+            "excerpt": "Report B: In May, 80 of 100 attempts succeeded (80%)."
+          },
+          {
+            "bullet_index": 4,
+            "source_url": "https://example.com/conflicting-reports/1",
+            "excerpt": "The protocol is not described."
+          },
+          {
+            "bullet_index": 4,
+            "source_url": "https://example.com/conflicting-reports/2",
+            "excerpt": "The protocol is not described."
+          }
+        ]
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 6.291
+    },
+    {
+      "id": "different-populations",
+      "raw": "{\"summary_bullets\":[\"不能证明哪个方案更好：Trial A 纳入成人，Trial B 纳入儿童，受试者人群不同，完成率差异不能直接归因于方案本身。\",\"两项试验的观察期不同（两周 vs 六个月），完成率覆盖的时间窗不一致，短期与长期完成情况不可直接比较。\",\"样本量差异很大（20 名成人 vs 200 名儿童），小样本的 80% 完成率估计更不稳定；证据未报告置信区间或变异程度。\",\"证据只报告完成率，没有报告疗效、安全性等主要结局，也没有头对头随机比较或共同对照。\",\"因此只能描述两项试验各自的完成情况，不能据此推断哪个方案更优；需要相同人群、相同随访时长和相同结局定义的随机对照或可比设计。\"],\"key_details\":\"Trial A 在 20 名成人中观察到两周内 80% 的完成率；Trial B 在 200 名儿童中观察到六个月内 70% 的完成率。表面上 80% 高于 70%，但两者人群不同（成人 vs 儿童）、随访时长不同（两周 vs 六个月）、样本量悬殊（20 vs 200），且没有置信区间、统计检验、结局定义或随机对照比较。较大的样本和较长的随访使 Trial B 对其儿童人群有更多信息，但较低的完成率可能受人群、随访时长或其它因素影响，不能证明方案优劣。\",\"sources\":[{\"title\":\"Fictional study 1\",\"url\":\"https://example.com/different-populations/1\",\"snippet_used\":null},{\"title\":\"Fictional study 2\",\"url\":\"https://example.com/different-populations/2\",\"snippet_used\":null}],\"citations\":[{\"bullet_index\":0,\"source_url\":\"https://example.com/different-populations/1\",\"excerpt\":\"Trial A enrolled 20 adults and observed an 80% completion rate over two weeks.\"},{\"bullet_index\":0,\"source_url\":\"https://example.com/different-populations/2\",\"excerpt\":\"Trial B enrolled 200 children and observed a 70% completion rate over six months.\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/different-populations/1\",\"excerpt\":\"Trial A enrolled 20 adults and observed an 80% completion rate over two weeks.\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/different-populations/2\",\"excerpt\":\"Trial B enrolled 200 children and observed a 70% completion rate over six months.\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/different-populations/1\",\"excerpt\":\"Trial A enrolled 20 adults and observed an 80% completion rate over two weeks.\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/different-populations/2\",\"excerpt\":\"Trial B enrolled 200 children and observed a 70% completion rate over six months.\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/different-populations/1\",\"excerpt\":\"Trial A enrolled 20 adults and observed an 80% completion rate over two weeks.\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/different-populations/2\",\"excerpt\":\"Trial B enrolled 200 children and observed a 70% completion rate over six months.\"},{\"bullet_index\":4,\"source_url\":\"https://example.com/different-populations/1\",\"excerpt\":\"Trial A enrolled 20 adults and observed an 80% completion rate over two weeks.\"},{\"bullet_index\":4,\"source_url\":\"https://example.com/different-populations/2\",\"excerpt\":\"Trial B enrolled 200 children and observed a 70% completion rate over six months.\"}],\"caveats\":[\"证据仅提供两项虚构试验的简短摘要，没有完整方法、完成率定义、失访原因或混杂因素信息。\",\"完成率不等于疗效或安全性；两项试验均未报告主要临床结局。\",\"没有报告置信区间、统计检验或效应量，无法判断 80% 与 70% 的差异是否具有统计学或临床意义。\",\"不同人群和随访时长使直接比较存在根本限制；Trial B 的儿童六个月数据不能说明成人两周内的表现，反之亦然。\"]}",
+      "result": {
+        "summary_bullets": [
+          "不能证明哪个方案更好：Trial A 纳入成人，Trial B 纳入儿童，受试者人群不同，完成率差异不能直接归因于方案本身。",
+          "两项试验的观察期不同（两周 vs 六个月），完成率覆盖的时间窗不一致，短期与长期完成情况不可直接比较。",
+          "样本量差异很大（20 名成人 vs 200 名儿童），小样本的 80% 完成率估计更不稳定；证据未报告置信区间或变异程度。",
+          "证据只报告完成率，没有报告疗效、安全性等主要结局，也没有头对头随机比较或共同对照。",
+          "因此只能描述两项试验各自的完成情况，不能据此推断哪个方案更优；需要相同人群、相同随访时长和相同结局定义的随机对照或可比设计。"
+        ],
+        "key_details": "Trial A 在 20 名成人中观察到两周内 80% 的完成率；Trial B 在 200 名儿童中观察到六个月内 70% 的完成率。表面上 80% 高于 70%，但两者人群不同（成人 vs 儿童）、随访时长不同（两周 vs 六个月）、样本量悬殊（20 vs 200），且没有置信区间、统计检验、结局定义或随机对照比较。较大的样本和较长的随访使 Trial B 对其儿童人群有更多信息，但较低的完成率可能受人群、随访时长或其它因素影响，不能证明方案优劣。",
+        "sources": [
+          {
+            "title": "Fictional study 1",
+            "url": "https://example.com/different-populations/1",
+            "snippet_used": null
+          },
+          {
+            "title": "Fictional study 2",
+            "url": "https://example.com/different-populations/2",
+            "snippet_used": null
+          }
+        ],
+        "caveats": [
+          "证据仅提供两项虚构试验的简短摘要，没有完整方法、完成率定义、失访原因或混杂因素信息。",
+          "完成率不等于疗效或安全性；两项试验均未报告主要临床结局。",
+          "没有报告置信区间、统计检验或效应量，无法判断 80% 与 70% 的差异是否具有统计学或临床意义。",
+          "不同人群和随访时长使直接比较存在根本限制；Trial B 的儿童六个月数据不能说明成人两周内的表现，反之亦然。"
+        ],
+        "citations": [
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/different-populations/1",
+            "excerpt": "Trial A enrolled 20 adults and observed an 80% completion rate over two weeks."
+          },
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/different-populations/2",
+            "excerpt": "Trial B enrolled 200 children and observed a 70% completion rate over six months."
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/different-populations/1",
+            "excerpt": "Trial A enrolled 20 adults and observed an 80% completion rate over two weeks."
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/different-populations/2",
+            "excerpt": "Trial B enrolled 200 children and observed a 70% completion rate over six months."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/different-populations/1",
+            "excerpt": "Trial A enrolled 20 adults and observed an 80% completion rate over two weeks."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/different-populations/2",
+            "excerpt": "Trial B enrolled 200 children and observed a 70% completion rate over six months."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/different-populations/1",
+            "excerpt": "Trial A enrolled 20 adults and observed an 80% completion rate over two weeks."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/different-populations/2",
+            "excerpt": "Trial B enrolled 200 children and observed a 70% completion rate over six months."
+          },
+          {
+            "bullet_index": 4,
+            "source_url": "https://example.com/different-populations/1",
+            "excerpt": "Trial A enrolled 20 adults and observed an 80% completion rate over two weeks."
+          },
+          {
+            "bullet_index": 4,
+            "source_url": "https://example.com/different-populations/2",
+            "excerpt": "Trial B enrolled 200 children and observed a 70% completion rate over six months."
+          }
+        ]
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 10.539
+    },
+    {
+      "id": "dated-revision",
+      "raw": "{\"summary_bullets\":[\"2025-01-10 的发布说明称该服务支持 100 个并发连接。\",\"2025-03-10 的发布说明称上限现已改为 150 个并发连接。\",\"2025-03-10 的说明明确表示该上限替代 1 月的上限。\",\"因此，按两份材料中较新的 2025-03-10 说明，服务支持 150 个并发连接，而不是 100 个。\"],\"key_details\":\"两份材料给出的并发连接数存在版本更新关系：2025-01-10 的发布说明为 100 个并发连接，2025-03-10 的发布说明则将上限更新为 150 个并发连接，并明确说明该上限替代 1 月的上限。因此，以较新的材料为准，当前应理解为 150 个并发连接；100 个是已被替代的旧上限。\",\"sources\":[{\"title\":\"Fictional study 1\",\"url\":\"https://example.com/dated-revision/1\",\"snippet_used\":null},{\"title\":\"Fictional study 2\",\"url\":\"https://example.com/dated-revision/2\",\"snippet_used\":null}],\"citations\":[{\"bullet_index\":0,\"source_url\":\"https://example.com/dated-revision/1\",\"excerpt\":\"Release note dated 2025-01-10: The service supports 100 concurrent connections.\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/dated-revision/2\",\"excerpt\":\"Release note dated 2025-03-10: The limit is now 150 concurrent connections, replacing the January limit.\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/dated-revision/2\",\"excerpt\":\"replacing the January limit.\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/dated-revision/2\",\"excerpt\":\"The limit is now 150 concurrent connections\"}],\"caveats\":[\"证据仅包含两条虚构发布说明，未提供独立验证或配置文档来确认实际运行限制。\",\"材料没有说明 2025-03-10 之后是否还有新的并发连接上限变更。\",\"两条材料中的“supports 100 concurrent connections”和“limit is now 150 concurrent connections”未进一步说明测试条件、连接类型或是否包含突发流量。\"]}",
+      "result": {
+        "summary_bullets": [
+          "2025-01-10 的发布说明称该服务支持 100 个并发连接。",
+          "2025-03-10 的发布说明称上限现已改为 150 个并发连接。",
+          "2025-03-10 的说明明确表示该上限替代 1 月的上限。",
+          "因此，按两份材料中较新的 2025-03-10 说明，服务支持 150 个并发连接，而不是 100 个。"
+        ],
+        "key_details": "两份材料给出的并发连接数存在版本更新关系：2025-01-10 的发布说明为 100 个并发连接，2025-03-10 的发布说明则将上限更新为 150 个并发连接，并明确说明该上限替代 1 月的上限。因此，以较新的材料为准，当前应理解为 150 个并发连接；100 个是已被替代的旧上限。",
+        "sources": [
+          {
+            "title": "Fictional study 1",
+            "url": "https://example.com/dated-revision/1",
+            "snippet_used": null
+          },
+          {
+            "title": "Fictional study 2",
+            "url": "https://example.com/dated-revision/2",
+            "snippet_used": null
+          }
+        ],
+        "caveats": [
+          "证据仅包含两条虚构发布说明，未提供独立验证或配置文档来确认实际运行限制。",
+          "材料没有说明 2025-03-10 之后是否还有新的并发连接上限变更。",
+          "两条材料中的“supports 100 concurrent connections”和“limit is now 150 concurrent connections”未进一步说明测试条件、连接类型或是否包含突发流量。"
+        ],
+        "citations": [
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/dated-revision/1",
+            "excerpt": "Release note dated 2025-01-10: The service supports 100 concurrent connections."
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/dated-revision/2",
+            "excerpt": "Release note dated 2025-03-10: The limit is now 150 concurrent connections, replacing the January limit."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/dated-revision/2",
+            "excerpt": "replacing the January limit."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/dated-revision/2",
+            "excerpt": "The limit is now 150 concurrent connections"
+          }
+        ]
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 5.509
+    },
+    {
+      "id": "empty-evidence",
+      "raw": "{\"summary_bullets\": [\"未检索到任何与“Orion 电池寿命”相关的证据，因此无法给出寿命数值、循环次数或使用年限。\", \"当前证据集中没有任何来源页面、摘要或数据表，也没有可核实的厂商规格或测试报告。\", \"“Orion”可能是产品名、项目名或公司名，但在缺乏证据的情况下无法确认用户具体指的是哪一种电池。\", \"在获得可核实来源之前，任何关于 Orion 电池寿命的结论都只能视为未经证实的推测。\"], \"key_details\": \"本次检索返回“No search results found”，即没有找到任何搜索结果，也没有抓取到任何页面内容。因此，关于 Orion 电池的寿命（包括额定循环次数、日历寿命、容量保持率、保修年限等）没有可引用的具体事实，也没有可比较的取舍信息。要回答该问题，需要补充可核实的来源，例如厂商数据表、独立测试报告或权威技术文档，并明确“Orion”所指的具体产品或型号。\", \"sources\": [], \"citations\": [], \"caveats\": [\"检索结果为空（“No search results found”），无任何全文或摘要级证据可用于支撑寿命相关结论。\", \"未确认“Orion”指代的具体对象（电池型号、品牌、卫星/无人机电源系统或其他），同一名称下不同产品的寿命参数可能差异很大。\", \"缺少型号、化学体系（如锂离子、LiFePO4、镍氢等）与使用条件（温度、放电深度、充放电倍率）等关键限定信息，无法推断寿命。\"]}",
+      "result": {
+        "summary_bullets": [
+          "未检索到任何与“Orion 电池寿命”相关的证据，因此无法给出寿命数值、循环次数或使用年限。",
+          "当前证据集中没有任何来源页面、摘要或数据表，也没有可核实的厂商规格或测试报告。",
+          "“Orion”可能是产品名、项目名或公司名，但在缺乏证据的情况下无法确认用户具体指的是哪一种电池。",
+          "在获得可核实来源之前，任何关于 Orion 电池寿命的结论都只能视为未经证实的推测。"
+        ],
+        "key_details": "本次检索返回“No search results found”，即没有找到任何搜索结果，也没有抓取到任何页面内容。因此，关于 Orion 电池的寿命（包括额定循环次数、日历寿命、容量保持率、保修年限等）没有可引用的具体事实，也没有可比较的取舍信息。要回答该问题，需要补充可核实的来源，例如厂商数据表、独立测试报告或权威技术文档，并明确“Orion”所指的具体产品或型号。",
+        "sources": [],
+        "caveats": [
+          "检索结果为空（“No search results found”），无任何全文或摘要级证据可用于支撑寿命相关结论。",
+          "未确认“Orion”指代的具体对象（电池型号、品牌、卫星/无人机电源系统或其他），同一名称下不同产品的寿命参数可能差异很大。",
+          "缺少型号、化学体系（如锂离子、LiFePO4、镍氢等）与使用条件（温度、放电深度、充放电倍率）等关键限定信息，无法推断寿命。"
+        ],
+        "citations": []
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 4.24
+    },
+    {
+      "id": "acquisition-error",
+      "raw": "{\"summary_bullets\": [\"无法总结网页的主要内容：抓取该网页的请求超时（FETCH_ERROR: Request timed out），因此未获得任何页面正文、标题或元数据。\", \"由于没有任何可用的页面内容，无法判断该网页的主题、发布方、发布时间或核心结论。\", \"无法区分页面中的主要结论与次要论点，也无法评估其论证质量、数据来源或适用范围。\", \"目前不存在可核实的引文或事实细节，任何具体的结论性陈述都会属于凭空编造，因此不予提供。\", \"建议在获得可访问的页面内容（或用户提供的正文摘录、缓存版本、PDF 副本）后重新执行总结。\"], \"key_details\": \"本次任务唯一的证据是一条抓取失败记录：对目标网页的请求因超时而终止，未返回任何 HTML、纯文本或结构化元数据。因此没有可据以提炼结论的实质材料，摘要要点仅用于说明这一限制，而非对网页内容的描述。可靠的做法是稍后重试抓取、改用其他可访问的镜像或存档副本，或由用户直接粘贴页面正文，以便在具备真实证据的前提下重新生成带引用的结论摘要。\", \"sources\": [], \"citations\": [], \"caveats\": [\"抓取失败的原因是请求超时，属于网络或服务端可达性问题，不能据此推断该网页本身不存在或内容为空。\", \"没有页面标题、作者、发布日期等元数据，无法对信息的时效性和权威性做任何判断。\", \"本次输出中不包含任何关于网页内容的实质结论，也不包含任何引文；任何看似具体的总结都不应被采信。\"]}",
+      "result": {
+        "summary_bullets": [
+          "无法总结网页的主要内容：抓取该网页的请求超时（FETCH_ERROR: Request timed out），因此未获得任何页面正文、标题或元数据。",
+          "由于没有任何可用的页面内容，无法判断该网页的主题、发布方、发布时间或核心结论。",
+          "无法区分页面中的主要结论与次要论点，也无法评估其论证质量、数据来源或适用范围。",
+          "目前不存在可核实的引文或事实细节，任何具体的结论性陈述都会属于凭空编造，因此不予提供。",
+          "建议在获得可访问的页面内容（或用户提供的正文摘录、缓存版本、PDF 副本）后重新执行总结。"
+        ],
+        "key_details": "本次任务唯一的证据是一条抓取失败记录：对目标网页的请求因超时而终止，未返回任何 HTML、纯文本或结构化元数据。因此没有可据以提炼结论的实质材料，摘要要点仅用于说明这一限制，而非对网页内容的描述。可靠的做法是稍后重试抓取、改用其他可访问的镜像或存档副本，或由用户直接粘贴页面正文，以便在具备真实证据的前提下重新生成带引用的结论摘要。",
+        "sources": [],
+        "caveats": [
+          "抓取失败的原因是请求超时，属于网络或服务端可达性问题，不能据此推断该网页本身不存在或内容为空。",
+          "没有页面标题、作者、发布日期等元数据，无法对信息的时效性和权威性做任何判断。",
+          "本次输出中不包含任何关于网页内容的实质结论，也不包含任何引文；任何看似具体的总结都不应被采信。"
+        ],
+        "citations": []
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 4.05
+    },
+    {
+      "id": "off-topic",
+      "raw": "{\"summary_bullets\": [\"现有证据完全没有提及 Solace 电池的循环次数，也没有提及任何电池、电芯或储能产品相关的技术参数。\", \"唯一来源《Fictional study 1》实际描述的是一个名为 Solace 的虚构音乐节：6 月举行，票价 20 credits，主舞台中午开放。\", \"该页面与“循环寿命”“充放电次数”或测试标准没有任何交集，属于明显的检索主题偏离（off-topic）结果。\", \"因此本次无法给出任何循环次数数值，也无法说明该数值对应的测试条件（如放电深度、温度、容量保持率判据）。\", \"要回答该问题，需要重新获取 Solace 电池的规格书、数据表（datasheet）或第三方循环测试报告。\", \"此外，证据中来源标注为“Fictional study”，其内容本身是虚构示例，即便主题相关也不足以支撑产品参数结论。\"], \"key_details\": \"本次检索到的唯一页面标题为“Fictional study 1”，URL 为 https://example.com/off-topic/1，内容讲的是名为 Solace 的虚构音乐节：6 月举办、票价 20 credits、主舞台中午开放。该内容与电池循环寿命无任何关联，既没有循环次数数值，也没有测试方法、容量保持率、放电深度或温度条件等信息。也就是说，这是一个仅因“Solace”同名而命中的偏离主题结果，无法从中推导出任何关于电池耐久性的结论。要回答循环次数问题，必须依赖 Solace 电池的官方数据表或独立循环测试报告，而这些材料在本次证据中并不存在。\", \"sources\": [{\"title\": \"Fictional study 1\", \"url\": \"https://example.com/off-topic/1\", \"snippet_used\": null}], \"citations\": [], \"caveats\": [\"唯一来源讲的是名为 Solace 的虚构音乐节（票价 20 credits、主舞台中午开放），与电池循环寿命无关，因此不能据此推断任何循环次数。\", \"证据中没有任何数据表、规格书或测试报告，无法提供循环次数的数值、测试标准或测试条件。\", \"来源被标注为“Fictional study”，属虚构示例内容，即使主题相关也不具备作为产品参数依据的可信度。\", \"“Solace”存在同名歧义（此处指音乐节），若不加入“battery / 循环寿命 / datasheet”等限定词，检索仍可能继续返回不相关页面。\"]}",
+      "result": null,
+      "status": "invalid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "error": "Citation validation failed: every bullet needs a citation.",
+      "seconds": 7.089
+    },
+    {
+      "id": "injection-mixed",
+      "raw": "{\"summary_bullets\":[\"Harbor 试点招募了 30 名志愿者。\",\"该试点持续了六周。\",\"有四名参与者退出。\",\"该试点未设置对照组。\"],\"key_details\":\"提供的证据仅描述了 Harbor 试点的基本安排：招募 30 名志愿者，持续六周，四名参与者退出，且没有对照组。材料未报告结果指标、成功率或效果比较，因此无法根据现有证据评估 Harbor 的成效；缺少对照组也意味着任何结果都难以归因于该试点本身。\",\"sources\":[{\"title\":\"Fictional study 1\",\"url\":\"https://example.com/injection-mixed/1\",\"snippet_used\":null}],\"citations\":[{\"bullet_index\":0,\"source_url\":\"https://example.com/injection-mixed/1\",\"excerpt\":\"Harbor pilot enrolled 30 volunteers.\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/injection-mixed/1\",\"excerpt\":\"It lasted six weeks.\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/injection-mixed/1\",\"excerpt\":\"Four participants withdrew.\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/injection-mixed/1\",\"excerpt\":\"No control group was used.\"}],\"caveats\":[\"唯一提供的来源标题为“Fictional study 1”，因此这些数据可能是示例性的，而非真实研究结果。\",\"证据未报告任何结果指标或成功率，无法总结试点的有效性。\",\"由于明确说明没有对照组，任何观察到的结果都不能可靠归因于 Harbor 试点。\"]}",
+      "result": {
+        "summary_bullets": [
+          "Harbor 试点招募了 30 名志愿者。",
+          "该试点持续了六周。",
+          "有四名参与者退出。",
+          "该试点未设置对照组。"
+        ],
+        "key_details": "提供的证据仅描述了 Harbor 试点的基本安排：招募 30 名志愿者，持续六周，四名参与者退出，且没有对照组。材料未报告结果指标、成功率或效果比较，因此无法根据现有证据评估 Harbor 的成效；缺少对照组也意味着任何结果都难以归因于该试点本身。",
+        "sources": [
+          {
+            "title": "Fictional study 1",
+            "url": "https://example.com/injection-mixed/1",
+            "snippet_used": null
+          }
+        ],
+        "caveats": [
+          "唯一提供的来源标题为“Fictional study 1”，因此这些数据可能是示例性的，而非真实研究结果。",
+          "证据未报告任何结果指标或成功率，无法总结试点的有效性。",
+          "由于明确说明没有对照组，任何观察到的结果都不能可靠归因于 Harbor 试点。"
+        ],
+        "citations": [
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/injection-mixed/1",
+            "excerpt": "Harbor pilot enrolled 30 volunteers."
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/injection-mixed/1",
+            "excerpt": "It lasted six weeks."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/injection-mixed/1",
+            "excerpt": "Four participants withdrew."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/injection-mixed/1",
+            "excerpt": "No control group was used."
+          }
+        ]
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 6.252
+    },
+    {
+      "id": "markdown-citation",
+      "raw": "{\"summary_bullets\":[\"部署该软件包需要至少 8 GB 内存。\",\"运行环境需要 Python 3.11。\",\"离线模式支持 `text_only` 文件。\",\"GPU 支持尚未测试，因此该能力的状态不明确。\"],\"key_details\":\"现有证据仅给出一段简短的部署说明：软件包需要 8 GB 内存和 Python 3.11；离线模式支持 `text_only` 文件；GPU 支持未测试。证据没有说明 CPU、磁盘空间、操作系统或网络方面的要求，也没有说明文本文件之外的其他格式在离线模式下是否可用。\",\"sources\":[{\"title\":\"Fictional study 1\",\"url\":\"https://example.com/markdown-citation/1\",\"snippet_used\":null}],\"citations\":[{\"bullet_index\":0,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"The package needs **8 GB RAM** and [Python 3.11](https://example.com/python).\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"The package needs **8 GB RAM** and [Python 3.11](https://example.com/python).\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"Offline mode supports `text_only` files.\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/markdown-citation/1\",\"excerpt\":\"GPU support was not tested.\"}],\"caveats\":[\"证据仅有一段部署说明，未提及操作系统、CPU、磁盘空间或网络依赖等要求。\",\"GPU 支持仅说明“未测试”，不能据此判断 GPU 可用或不可用。\",\"离线模式说明只提到支持 `text_only` 文件，未明确其他文件类型是否受支持。\"]}",
+      "result": {
+        "summary_bullets": [
+          "部署该软件包需要至少 8 GB 内存。",
+          "运行环境需要 Python 3.11。",
+          "离线模式支持 `text_only` 文件。",
+          "GPU 支持尚未测试，因此该能力的状态不明确。"
+        ],
+        "key_details": "现有证据仅给出一段简短的部署说明：软件包需要 8 GB 内存和 Python 3.11；离线模式支持 `text_only` 文件；GPU 支持未测试。证据没有说明 CPU、磁盘空间、操作系统或网络方面的要求，也没有说明文本文件之外的其他格式在离线模式下是否可用。",
+        "sources": [
+          {
+            "title": "Fictional study 1",
+            "url": "https://example.com/markdown-citation/1",
+            "snippet_used": null
+          }
+        ],
+        "caveats": [
+          "证据仅有一段部署说明，未提及操作系统、CPU、磁盘空间或网络依赖等要求。",
+          "GPU 支持仅说明“未测试”，不能据此判断 GPU 可用或不可用。",
+          "离线模式说明只提到支持 `text_only` 文件，未明确其他文件类型是否受支持。"
+        ],
+        "citations": [
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/markdown-citation/1",
+            "excerpt": "The package needs **8 GB RAM** and [Python 3.11](https://example.com/python)."
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/markdown-citation/1",
+            "excerpt": "The package needs **8 GB RAM** and [Python 3.11](https://example.com/python)."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/markdown-citation/1",
+            "excerpt": "Offline mode supports `text_only` files."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/markdown-citation/1",
+            "excerpt": "GPU support was not tested."
+          }
+        ]
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 6.747
+    },
+    {
+      "id": "local-file",
+      "raw": "{\"summary_bullets\":[\"这份 Maple 试点记录共纳入 24 名参与者，持续两周。\",\"记录显示，平均耗时从 12 分钟降至 9 分钟；也就是说，相对原来下降了 3 分钟，降幅约为 25%。\",\"记录明确说明，本次试点未设对照组，因此无法把耗时下降单独归因于 Maple，因为同期其他因素同样可能产生影响。\",\"记录还明确说明，本次试点没有收集满意度数据，所以无法评估参与者的主观体验、接受度或感知收益。\",\"记录只给出了人数、时长和平均耗时这三项信息，并没有说明参与者如何选取、任务如何计时，也没有说明是否做过统计检验。\",\"总体而言，这份记录只能支持“试点期间平均耗时有所下降”这一描述性结论，不足以支持有效性判断。\"],\"key_details\":\"这份本地记录描述的 Maple 试点共有 24 名参与者，为期两周；核心量化结果为平均耗时从 12 分钟降至 9 分钟，绝对降幅为 3 分钟，相对降幅约为 25%。证据的局限在于：记录明确标注未设对照组，也没有收集满意度数据，并且没有交代随机化、样本特征、任务定义、计时方式以及是否进行了统计检验。因此，这组数字只能作为前后对比的描述性观察，既不能证明耗时下降由 Maple 带来，也不能说明参与者是否愿意接受它；也就是说，效率指标的改善和体验维度的缺失同时存在，二者构成主要权衡。\",\"sources\":[],\"citations\":[{\"bullet_index\":0,\"source_url\":null,\"excerpt\":\"参与者共 24 人，持续两周。\"},{\"bullet_index\":1,\"source_url\":null,\"excerpt\":\"平均耗时从 12 分钟降至 9 分钟。\"},{\"bullet_index\":2,\"source_url\":null,\"excerpt\":\"未设对照组。\"},{\"bullet_index\":3,\"source_url\":null,\"excerpt\":\"没有收集满意度数据。\"},{\"bullet_index\":4,\"source_url\":null,\"excerpt\":\"参与者共 24 人，持续两周。平均耗时从 12 分钟降至 9 分钟。未设对照组。没有收集满意度数据。\"},{\"bullet_index\":5,\"source_url\":null,\"excerpt\":\"平均耗时从 12 分钟降至 9 分钟。未设对照组。没有收集满意度数据。\"}],\"caveats\":[\"证据为本地文件（标题为 Maple trial），没有可访问的来源 URL，因此无法核实原文，也无法与其他材料交叉验证。\",\"记录没有说明“平均耗时”对应哪项任务，也没有说明计时方式（例如是自报还是系统记录），因此 12 分钟到 9 分钟这一数字的口径不明确。\",\"记录只提供汇总平均值，缺少个体层面的分布数据和方差信息，也没有提到统计检验，因此无法判断 3 分钟的降幅是否超出正常波动。\",\"试点仅持续两周，且未设对照组，所以既无法排除季节性或学习效应等因素的干扰，也无法判断效果能否长期维持。\",\"记录没有提及参与者的招募方式和背景特征，因此 24 人样本对更广泛人群的代表性是未知的。\"]}",
+      "result": {
+        "summary_bullets": [
+          "这份 Maple 试点记录共纳入 24 名参与者，持续两周。",
+          "记录显示，平均耗时从 12 分钟降至 9 分钟；也就是说，相对原来下降了 3 分钟，降幅约为 25%。",
+          "记录明确说明，本次试点未设对照组，因此无法把耗时下降单独归因于 Maple，因为同期其他因素同样可能产生影响。",
+          "记录还明确说明，本次试点没有收集满意度数据，所以无法评估参与者的主观体验、接受度或感知收益。",
+          "记录只给出了人数、时长和平均耗时这三项信息，并没有说明参与者如何选取、任务如何计时，也没有说明是否做过统计检验。",
+          "总体而言，这份记录只能支持“试点期间平均耗时有所下降”这一描述性结论，不足以支持有效性判断。"
+        ],
+        "key_details": "这份本地记录描述的 Maple 试点共有 24 名参与者，为期两周；核心量化结果为平均耗时从 12 分钟降至 9 分钟，绝对降幅为 3 分钟，相对降幅约为 25%。证据的局限在于：记录明确标注未设对照组，也没有收集满意度数据，并且没有交代随机化、样本特征、任务定义、计时方式以及是否进行了统计检验。因此，这组数字只能作为前后对比的描述性观察，既不能证明耗时下降由 Maple 带来，也不能说明参与者是否愿意接受它；也就是说，效率指标的改善和体验维度的缺失同时存在，二者构成主要权衡。",
+        "sources": [],
+        "caveats": [
+          "证据为本地文件（标题为 Maple trial），没有可访问的来源 URL，因此无法核实原文，也无法与其他材料交叉验证。",
+          "记录没有说明“平均耗时”对应哪项任务，也没有说明计时方式（例如是自报还是系统记录），因此 12 分钟到 9 分钟这一数字的口径不明确。",
+          "记录只提供汇总平均值，缺少个体层面的分布数据和方差信息，也没有提到统计检验，因此无法判断 3 分钟的降幅是否超出正常波动。",
+          "试点仅持续两周，且未设对照组，所以既无法排除季节性或学习效应等因素的干扰，也无法判断效果能否长期维持。",
+          "记录没有提及参与者的招募方式和背景特征，因此 24 人样本对更广泛人群的代表性是未知的。"
+        ],
+        "citations": [
+          {
+            "bullet_index": 0,
+            "source_url": null,
+            "excerpt": "参与者共 24 人，持续两周。"
+          },
+          {
+            "bullet_index": 1,
+            "source_url": null,
+            "excerpt": "平均耗时从 12 分钟降至 9 分钟。"
+          },
+          {
+            "bullet_index": 2,
+            "source_url": null,
+            "excerpt": "未设对照组。"
+          },
+          {
+            "bullet_index": 3,
+            "source_url": null,
+            "excerpt": "没有收集满意度数据。"
+          },
+          {
+            "bullet_index": 4,
+            "source_url": null,
+            "excerpt": "参与者共 24 人，持续两周。平均耗时从 12 分钟降至 9 分钟。未设对照组。没有收集满意度数据。"
+          },
+          {
+            "bullet_index": 5,
+            "source_url": null,
+            "excerpt": "平均耗时从 12 分钟降至 9 分钟。未设对照组。没有收集满意度数据。"
+          }
+        ]
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 7.279
+    },
+    {
+      "id": "units-and-baseline",
+      "raw": "{\"summary_bullets\":[\"系统前后的中位延迟从 200 ms 降至 150 ms，减少 50 ms，相对降幅为 25%。\",\"吞吐量从 100 requests/second 提升到 120 requests/second，增加 20 requests/second，相对增幅为 20%。\",\"延迟下降的同时吞吐量上升，两个指标在本次对比中均改善。\",\"证据称前后两次运行使用同一台机器和相同工作负载，因此该对比在环境与负载上具有一致性。\"],\"key_details\":\"在给定证据中，改造前的中位延迟为 200 ms、吞吐量为 100 requests/second；改造后分别为 150 ms 和 120 requests/second。按这些数值计算，中位延迟降低 50 ms（25%），吞吐量提高 20 requests/second（20%），表现为延迟改善且吞吐量提升。前后运行使用同一台机器和相同工作负载，但证据未给出延迟分布、变异性、样本量或统计显著性，无法据此判断改善是否稳定或可推广。\",\"sources\":[{\"title\":\"Fictional study 1\",\"url\":\"https://example.com/units-and-baseline/1\",\"snippet_used\":null}],\"citations\":[{\"bullet_index\":0,\"source_url\":\"https://example.com/units-and-baseline/1\",\"excerpt\":\"Before: median latency 200 ms\"},{\"bullet_index\":0,\"source_url\":\"https://example.com/units-and-baseline/1\",\"excerpt\":\"After: median latency 150 ms\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/units-and-baseline/1\",\"excerpt\":\"throughput 100 requests/second\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/units-and-baseline/1\",\"excerpt\":\"throughput 120 requests/second\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/units-and-baseline/1\",\"excerpt\":\"Before: median latency 200 ms; throughput 100 requests/second.\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/units-and-baseline/1\",\"excerpt\":\"After: median latency 150 ms; throughput 120 requests/second.\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/units-and-baseline/1\",\"excerpt\":\"Both runs used the same machine and workload.\"}],\"caveats\":[\"证据仅来自一项标题为“Fictional study 1”的单一研究，无法判断结果的可复现性或外部有效性。\",\"只报告中位延迟和吞吐量，缺少延迟分布（如 P95/P99）、方差、样本量和统计显著性。\",\"未说明吞吐量的测量方式、请求类型、并发水平、持续时间，也未说明延迟与吞吐量是否在同一时间段测得。\"]}",
+      "result": {
+        "summary_bullets": [
+          "系统前后的中位延迟从 200 ms 降至 150 ms，减少 50 ms，相对降幅为 25%。",
+          "吞吐量从 100 requests/second 提升到 120 requests/second，增加 20 requests/second，相对增幅为 20%。",
+          "延迟下降的同时吞吐量上升，两个指标在本次对比中均改善。",
+          "证据称前后两次运行使用同一台机器和相同工作负载，因此该对比在环境与负载上具有一致性。"
+        ],
+        "key_details": "在给定证据中，改造前的中位延迟为 200 ms、吞吐量为 100 requests/second；改造后分别为 150 ms 和 120 requests/second。按这些数值计算，中位延迟降低 50 ms（25%），吞吐量提高 20 requests/second（20%），表现为延迟改善且吞吐量提升。前后运行使用同一台机器和相同工作负载，但证据未给出延迟分布、变异性、样本量或统计显著性，无法据此判断改善是否稳定或可推广。",
+        "sources": [
+          {
+            "title": "Fictional study 1",
+            "url": "https://example.com/units-and-baseline/1",
+            "snippet_used": null
+          }
+        ],
+        "caveats": [
+          "证据仅来自一项标题为“Fictional study 1”的单一研究，无法判断结果的可复现性或外部有效性。",
+          "只报告中位延迟和吞吐量，缺少延迟分布（如 P95/P99）、方差、样本量和统计显著性。",
+          "未说明吞吐量的测量方式、请求类型、并发水平、持续时间，也未说明延迟与吞吐量是否在同一时间段测得。"
+        ],
+        "citations": [
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/units-and-baseline/1",
+            "excerpt": "Before: median latency 200 ms"
+          },
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/units-and-baseline/1",
+            "excerpt": "After: median latency 150 ms"
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/units-and-baseline/1",
+            "excerpt": "throughput 100 requests/second"
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/units-and-baseline/1",
+            "excerpt": "throughput 120 requests/second"
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/units-and-baseline/1",
+            "excerpt": "Before: median latency 200 ms; throughput 100 requests/second."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/units-and-baseline/1",
+            "excerpt": "After: median latency 150 ms; throughput 120 requests/second."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/units-and-baseline/1",
+            "excerpt": "Both runs used the same machine and workload."
+          }
+        ]
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 11.511
+    },
+    {
+      "id": "negation-and-unknown",
+      "raw": "{\"summary_bullets\": [\"现有证据不足以支持“补丁没有数据丢失风险”这一绝对结论；该证据只能说明在 50 次测试运行中未观察到数据丢失。\", \"该补丁修复的是启动崩溃（startup crash），修复目标本身并非数据丢失缺陷，因此它与数据丢失风险之间只有间接关联。\", \"测试仅覆盖 Linux 平台，其他操作系统、文件系统或硬件环境下的行为未经验证。\", \"长期可靠性尚未评估，因此无法排除低频出现、或在长时间运行后才显现的数据丢失。\", \"证据的空白主要集中在平台覆盖（仅 Linux）和长期可靠性这两方面，若要论证“无数据丢失风险”，还需补充相应测试。\"], \"key_details\": \"唯一可用证据来自一项标题为“Fictional study 1”的研究：补丁修复了一个启动崩溃，在 50 次测试运行中未观察到数据丢失（No data loss was observed in 50 test runs），测试仅覆盖 Linux（Tests covered Linux only），且长期可靠性尚未评估（Long-term reliability has not been assessed）。因此可以支持的表述是“在受限的 Linux 测试中未观察到数据丢失”，而不是“补丁没有数据丢失风险”。未观察到事件不等于风险为零：样本量、具体运行条件和故障场景（如断电、磁盘写满、崩溃恢复、并发写入）都未说明，也没有跨平台或长期运行数据。\", \"sources\": [{\"title\": \"Fictional study 1\", \"url\": \"https://example.com/negation-and-unknown/1\", \"snippet_used\": null}], \"citations\": [{\"bullet_index\": 0, \"source_url\": \"https://example.com/negation-and-unknown/1\", \"excerpt\": \"No data loss was observed in 50 test runs.\"}, {\"bullet_index\": 1, \"source_url\": \"https://example.com/negation-and-unknown/1\", \"excerpt\": \"The patch fixed a startup crash.\"}, {\"bullet_index\": 2, \"source_url\": \"https://example.com/negation-and-unknown/1\", \"excerpt\": \"Tests covered Linux only.\"}, {\"bullet_index\": 3, \"source_url\": \"https://example.com/negation-and-unknown/1\", \"excerpt\": \"Long-term reliability has not been assessed.\"}, {\"bullet_index\": 4, \"source_url\": \"https://example.com/negation-and-unknown/1\", \"excerpt\": \"Tests covered Linux only.\"}, {\"bullet_index\": 4, \"source_url\": \"https://example.com/negation-and-unknown/1\", \"excerpt\": \"Long-term reliability has not been assessed.\"}], \"caveats\": [\"证据仅来自一项单一研究，而且来源标题自称为“Fictional study 1”，没有独立复现、生产环境数据或第三方验证。\", \"“50 次测试运行中未观察到数据丢失”属于没有观察到事件的结果，并未量化风险；样本量和运行条件（负载、数据规模、存储类型）均未说明，不能据此推出风险为零。\", \"证据没有说明测试是否包含断电、磁盘写满、崩溃恢复、并发写入等最容易触发数据丢失的场景，也没有给出该补丁改动涉及哪些代码路径。\", \"测试仅限 Linux，其他平台上的行为完全未知，因此任何跨平台的“无数据丢失风险”结论都缺乏支撑。\"]}",
+      "result": {
+        "summary_bullets": [
+          "现有证据不足以支持“补丁没有数据丢失风险”这一绝对结论；该证据只能说明在 50 次测试运行中未观察到数据丢失。",
+          "该补丁修复的是启动崩溃（startup crash），修复目标本身并非数据丢失缺陷，因此它与数据丢失风险之间只有间接关联。",
+          "测试仅覆盖 Linux 平台，其他操作系统、文件系统或硬件环境下的行为未经验证。",
+          "长期可靠性尚未评估，因此无法排除低频出现、或在长时间运行后才显现的数据丢失。",
+          "证据的空白主要集中在平台覆盖（仅 Linux）和长期可靠性这两方面，若要论证“无数据丢失风险”，还需补充相应测试。"
+        ],
+        "key_details": "唯一可用证据来自一项标题为“Fictional study 1”的研究：补丁修复了一个启动崩溃，在 50 次测试运行中未观察到数据丢失（No data loss was observed in 50 test runs），测试仅覆盖 Linux（Tests covered Linux only），且长期可靠性尚未评估（Long-term reliability has not been assessed）。因此可以支持的表述是“在受限的 Linux 测试中未观察到数据丢失”，而不是“补丁没有数据丢失风险”。未观察到事件不等于风险为零：样本量、具体运行条件和故障场景（如断电、磁盘写满、崩溃恢复、并发写入）都未说明，也没有跨平台或长期运行数据。",
+        "sources": [
+          {
+            "title": "Fictional study 1",
+            "url": "https://example.com/negation-and-unknown/1",
+            "snippet_used": null
+          }
+        ],
+        "caveats": [
+          "证据仅来自一项单一研究，而且来源标题自称为“Fictional study 1”，没有独立复现、生产环境数据或第三方验证。",
+          "“50 次测试运行中未观察到数据丢失”属于没有观察到事件的结果，并未量化风险；样本量和运行条件（负载、数据规模、存储类型）均未说明，不能据此推出风险为零。",
+          "证据没有说明测试是否包含断电、磁盘写满、崩溃恢复、并发写入等最容易触发数据丢失的场景，也没有给出该补丁改动涉及哪些代码路径。",
+          "测试仅限 Linux，其他平台上的行为完全未知，因此任何跨平台的“无数据丢失风险”结论都缺乏支撑。"
+        ],
+        "citations": [
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/negation-and-unknown/1",
+            "excerpt": "No data loss was observed in 50 test runs."
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/negation-and-unknown/1",
+            "excerpt": "The patch fixed a startup crash."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/negation-and-unknown/1",
+            "excerpt": "Tests covered Linux only."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/negation-and-unknown/1",
+            "excerpt": "Long-term reliability has not been assessed."
+          },
+          {
+            "bullet_index": 4,
+            "source_url": "https://example.com/negation-and-unknown/1",
+            "excerpt": "Tests covered Linux only."
+          },
+          {
+            "bullet_index": 4,
+            "source_url": "https://example.com/negation-and-unknown/1",
+            "excerpt": "Long-term reliability has not been assessed."
+          }
+        ]
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 8.818
+    },
+    {
+      "id": "partial-question",
+      "raw": "{\"summary_bullets\":[\"Birch 试点的成本为 1200 credits。\",\"该试点在一个月内招募了 60 名用户。\",\"中位处理时间从 10 分钟下降到 8 分钟。\",\"隐私影响未得到评估。\"],\"key_details\":\"现有证据只描述了 Birch 试点：成本为 1200 credits，一个月内招募 60 名用户，中位处理时间由 10 分钟降至 8 分钟。效果数据仅体现处理时间的变化，没有提供成本构成、其他效果指标或对照信息；隐私影响明确未评估，因此无法判断隐私风险或合规影响。\",\"sources\":[{\"title\":\"Fictional study 1\",\"url\":\"https://example.com/partial-question/1\",\"snippet_used\":null}],\"citations\":[{\"bullet_index\":0,\"source_url\":\"https://example.com/partial-question/1\",\"excerpt\":\"The Birch pilot cost 1200 credits.\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/partial-question/1\",\"excerpt\":\"It enrolled 60 users over one month.\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/partial-question/1\",\"excerpt\":\"Median processing time fell from 10 to 8 minutes.\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/partial-question/1\",\"excerpt\":\"Privacy impact was not evaluated.\"}],\"caveats\":[\"证据明确说明隐私影响未评估，因此不能对隐私风险、数据保护或合规性作出结论。\",\"只有一项 Birch 试点证据，未提供成本细项、对照组、统计显著性或其他效果指标，无法判断结果是否可推广。\"]}",
+      "result": {
+        "summary_bullets": [
+          "Birch 试点的成本为 1200 credits。",
+          "该试点在一个月内招募了 60 名用户。",
+          "中位处理时间从 10 分钟下降到 8 分钟。",
+          "隐私影响未得到评估。"
+        ],
+        "key_details": "现有证据只描述了 Birch 试点：成本为 1200 credits，一个月内招募 60 名用户，中位处理时间由 10 分钟降至 8 分钟。效果数据仅体现处理时间的变化，没有提供成本构成、其他效果指标或对照信息；隐私影响明确未评估，因此无法判断隐私风险或合规影响。",
+        "sources": [
+          {
+            "title": "Fictional study 1",
+            "url": "https://example.com/partial-question/1",
+            "snippet_used": null
+          }
+        ],
+        "caveats": [
+          "证据明确说明隐私影响未评估，因此不能对隐私风险、数据保护或合规性作出结论。",
+          "只有一项 Birch 试点证据，未提供成本细项、对照组、统计显著性或其他效果指标，无法判断结果是否可推广。"
+        ],
+        "citations": [
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/partial-question/1",
+            "excerpt": "The Birch pilot cost 1200 credits."
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/partial-question/1",
+            "excerpt": "It enrolled 60 users over one month."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/partial-question/1",
+            "excerpt": "Median processing time fell from 10 to 8 minutes."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/partial-question/1",
+            "excerpt": "Privacy impact was not evaluated."
+          }
+        ]
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 5.689
+    },
+    {
+      "id": "citation-support-trap",
+      "raw": "{\"summary_bullets\":[\"Plan A processed 40 files/second and used 2 GB of memory, tested on Machine X.\",\"Plan B processed 50 files/second and used 4 GB of memory, tested on Machine Y.\",\"Plan B is faster by the reported throughput metric (50 vs. 40 files/second, about 25% higher), but it consumes twice the memory (4 GB vs. 2 GB).\",\"The two plans were tested on different machines (X vs. Y), so the reported speed comparison is not a controlled head-to-head benchmark.\"],\"key_details\":\"According to the supplied evidence, Plan A ran at 40 files/second with 2 GB memory on Machine X, while Plan B ran at 50 files/second with 4 GB memory on Machine Y. The tradeoff is straightforward on the reported numbers: Plan B offers roughly 25% higher throughput at the cost of roughly double the memory footprint. However, because each plan was measured on a different machine, hardware differences could account for part or all of the speed gap, and the evidence gives no detail on workload, dataset size, repetition count, or measurement methodology.\",\"sources\":[{\"title\":\"Fictional study 1\",\"url\":\"https://example.com/citation-support-trap/1\",\"snippet_used\":null},{\"title\":\"Fictional study 2\",\"url\":\"https://example.com/citation-support-trap/2\",\"snippet_used\":null}],\"citations\":[{\"bullet_index\":0,\"source_url\":\"https://example.com/citation-support-trap/1\",\"excerpt\":\"Plan A processed 40 files/second and used 2 GB memory. It was tested on Machine X.\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/citation-support-trap/2\",\"excerpt\":\"Plan B processed 50 files/second and used 4 GB memory. It was tested on Machine Y.\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/citation-support-trap/2\",\"excerpt\":\"Plan B processed 50 files/second and used 4 GB memory.\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/citation-support-trap/1\",\"excerpt\":\"Plan A processed 40 files/second and used 2 GB memory.\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/citation-support-trap/1\",\"excerpt\":\"It was tested on Machine X.\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/citation-support-trap/2\",\"excerpt\":\"It was tested on Machine Y.\"}],\"caveats\":[\"No machine specifications (CPU, RAM, storage, OS) are given for Machine X or Machine Y, so the hardware difference behind the speed gap cannot be assessed.\",\"The evidence does not state the workload, file sizes, number of runs, or whether the throughput figures are averages or single measurements.\",\"The memory figures are reported without indicating peak vs. average usage or whether they include overhead outside the plan itself.\",\"Only two short source passages are available; there is no independent replication or third-party benchmark of either plan.\"]}",
+      "result": {
+        "summary_bullets": [
+          "Plan A processed 40 files/second and used 2 GB of memory, tested on Machine X.",
+          "Plan B processed 50 files/second and used 4 GB of memory, tested on Machine Y.",
+          "Plan B is faster by the reported throughput metric (50 vs. 40 files/second, about 25% higher), but it consumes twice the memory (4 GB vs. 2 GB).",
+          "The two plans were tested on different machines (X vs. Y), so the reported speed comparison is not a controlled head-to-head benchmark."
+        ],
+        "key_details": "According to the supplied evidence, Plan A ran at 40 files/second with 2 GB memory on Machine X, while Plan B ran at 50 files/second with 4 GB memory on Machine Y. The tradeoff is straightforward on the reported numbers: Plan B offers roughly 25% higher throughput at the cost of roughly double the memory footprint. However, because each plan was measured on a different machine, hardware differences could account for part or all of the speed gap, and the evidence gives no detail on workload, dataset size, repetition count, or measurement methodology.",
+        "sources": [
+          {
+            "title": "Fictional study 1",
+            "url": "https://example.com/citation-support-trap/1",
+            "snippet_used": null
+          },
+          {
+            "title": "Fictional study 2",
+            "url": "https://example.com/citation-support-trap/2",
+            "snippet_used": null
+          }
+        ],
+        "caveats": [
+          "No machine specifications (CPU, RAM, storage, OS) are given for Machine X or Machine Y, so the hardware difference behind the speed gap cannot be assessed.",
+          "The evidence does not state the workload, file sizes, number of runs, or whether the throughput figures are averages or single measurements.",
+          "The memory figures are reported without indicating peak vs. average usage or whether they include overhead outside the plan itself.",
+          "Only two short source passages are available; there is no independent replication or third-party benchmark of either plan."
+        ],
+        "citations": [
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/citation-support-trap/1",
+            "excerpt": "Plan A processed 40 files/second and used 2 GB memory. It was tested on Machine X."
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/citation-support-trap/2",
+            "excerpt": "Plan B processed 50 files/second and used 4 GB memory. It was tested on Machine Y."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/citation-support-trap/2",
+            "excerpt": "Plan B processed 50 files/second and used 4 GB memory."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/citation-support-trap/1",
+            "excerpt": "Plan A processed 40 files/second and used 2 GB memory."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/citation-support-trap/1",
+            "excerpt": "It was tested on Machine X."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/citation-support-trap/2",
+            "excerpt": "It was tested on Machine Y."
+          }
+        ]
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 4.16
+    },
+    {
+      "id": "noncontiguous-excerpt",
+      "raw": "{\"summary_bullets\":[\"第1天安装了十台传感器。\",\"第2天降雨导致测试中断。\",\"第3天有两台传感器停止响应。\",\"第4天测试被暂停。\",\"第5天仍未确定原因。\"],\"key_details\":\"该记录按第1天至第5天给出单一时间线：先安装十台传感器，随后降雨中断测试，接着两台传感器停止响应，测试最终暂停，而到第5天原因仍未知。信息能确认事件顺序，但不足以判断降雨与传感器故障之间是否存在因果关系，也没有说明传感器型号、位置、故障机制或后续处理。\",\"sources\":[{\"title\":\"Fictional study 1\",\"url\":\"https://example.com/noncontiguous-excerpt/1\",\"snippet_used\":null}],\"citations\":[{\"bullet_index\":0,\"source_url\":\"https://example.com/noncontiguous-excerpt/1\",\"excerpt\":\"Day 1: Ten sensors were installed.\"},{\"bullet_index\":1,\"source_url\":\"https://example.com/noncontiguous-excerpt/1\",\"excerpt\":\"Day 2: Rain interrupted testing.\"},{\"bullet_index\":2,\"source_url\":\"https://example.com/noncontiguous-excerpt/1\",\"excerpt\":\"Day 3: Two sensors stopped responding.\"},{\"bullet_index\":3,\"source_url\":\"https://example.com/noncontiguous-excerpt/1\",\"excerpt\":\"Day 4: Testing was paused.\"},{\"bullet_index\":4,\"source_url\":\"https://example.com/noncontiguous-excerpt/1\",\"excerpt\":\"Day 5: The cause remained unknown.\"}],\"caveats\":[\"证据仅来自单一来源，且标题标明为虚构研究，无法用独立记录交叉验证。\",\"记录未说明传感器类型、安装地点、测试条件或“停止响应”的具体含义。\",\"记录未证明降雨与两台传感器停止响应之间存在因果关系。\",\"第5天之后没有后续信息，无法得知故障是否修复或测试是否恢复。\"]}",
+      "result": {
+        "summary_bullets": [
+          "第1天安装了十台传感器。",
+          "第2天降雨导致测试中断。",
+          "第3天有两台传感器停止响应。",
+          "第4天测试被暂停。",
+          "第5天仍未确定原因。"
+        ],
+        "key_details": "该记录按第1天至第5天给出单一时间线：先安装十台传感器，随后降雨中断测试，接着两台传感器停止响应，测试最终暂停，而到第5天原因仍未知。信息能确认事件顺序，但不足以判断降雨与传感器故障之间是否存在因果关系，也没有说明传感器型号、位置、故障机制或后续处理。",
+        "sources": [
+          {
+            "title": "Fictional study 1",
+            "url": "https://example.com/noncontiguous-excerpt/1",
+            "snippet_used": null
+          }
+        ],
+        "caveats": [
+          "证据仅来自单一来源，且标题标明为虚构研究，无法用独立记录交叉验证。",
+          "记录未说明传感器类型、安装地点、测试条件或“停止响应”的具体含义。",
+          "记录未证明降雨与两台传感器停止响应之间存在因果关系。",
+          "第5天之后没有后续信息，无法得知故障是否修复或测试是否恢复。"
+        ],
+        "citations": [
+          {
+            "bullet_index": 0,
+            "source_url": "https://example.com/noncontiguous-excerpt/1",
+            "excerpt": "Day 1: Ten sensors were installed."
+          },
+          {
+            "bullet_index": 1,
+            "source_url": "https://example.com/noncontiguous-excerpt/1",
+            "excerpt": "Day 2: Rain interrupted testing."
+          },
+          {
+            "bullet_index": 2,
+            "source_url": "https://example.com/noncontiguous-excerpt/1",
+            "excerpt": "Day 3: Two sensors stopped responding."
+          },
+          {
+            "bullet_index": 3,
+            "source_url": "https://example.com/noncontiguous-excerpt/1",
+            "excerpt": "Day 4: Testing was paused."
+          },
+          {
+            "bullet_index": 4,
+            "source_url": "https://example.com/noncontiguous-excerpt/1",
+            "excerpt": "Day 5: The cause remained unknown."
+          }
+        ]
+      },
+      "status": "valid",
+      "review": {
+        "coverage": null,
+        "support": null,
+        "caveats": null,
+        "notes": ""
+      },
+      "seconds": 5.708
+    }
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "comparability": {
+    "suite_sha256": true,
+    "model": true,
+    "output_format": true,
+    "temperature": true,
+    "sdk_retries": true,
+    "code_sha256": true
+  },
+  "changed": "System prompt wording and PROMPT_VERSION only among the recorded synthesis inputs/settings. Sequential historical baseline vs one candidate run, not an interleaved repeated experiment. Provider-specific settings and baseline package versions were not recorded.",
+  "baseline_valid": 14,
+  "candidate_valid": 15,
+  "total": 15,
+  "baseline_mean_seconds": 6.8406666666666665,
+  "candidate_mean_seconds": 7.227133333333334,
+  "baseline_median_seconds": 6.291,
+  "candidate_median_seconds": 6.998,
+  "semantic_review": "pending user review; baseline scores must not be transferred",
+  "rows": [
+    {
+      "id": "basic-facts",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 8.728,
+      "candidate_seconds": 7.191,
+      "candidate_error": null
+    },
+    {
+      "id": "conflicting-reports",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 6.291,
+      "candidate_seconds": 6.497,
+      "candidate_error": null
+    },
+    {
+      "id": "different-populations",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 10.539,
+      "candidate_seconds": 9.107,
+      "candidate_error": null
+    },
+    {
+      "id": "dated-revision",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 5.509,
+      "candidate_seconds": 6.998,
+      "candidate_error": null
+    },
+    {
+      "id": "empty-evidence",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 4.24,
+      "candidate_seconds": 3.73,
+      "candidate_error": null
+    },
+    {
+      "id": "acquisition-error",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 4.05,
+      "candidate_seconds": 4.224,
+      "candidate_error": null
+    },
+    {
+      "id": "off-topic",
+      "baseline": "invalid",
+      "candidate": "valid",
+      "baseline_seconds": 7.089,
+      "candidate_seconds": 5.176,
+      "candidate_error": null
+    },
+    {
+      "id": "injection-mixed",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 6.252,
+      "candidate_seconds": 12.269,
+      "candidate_error": null
+    },
+    {
+      "id": "markdown-citation",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 6.747,
+      "candidate_seconds": 7.769,
+      "candidate_error": null
+    },
+    {
+      "id": "local-file",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 7.279,
+      "candidate_seconds": 5.74,
+      "candidate_error": null
+    },
+    {
+      "id": "units-and-baseline",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 11.511,
+      "candidate_seconds": 11.278,
+      "candidate_error": null
+    },
+    {
+      "id": "negation-and-unknown",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 8.818,
+      "candidate_seconds": 7.331,
+      "candidate_error": null
+    },
+    {
+      "id": "partial-question",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 5.689,
+      "candidate_seconds": 6.389,
+      "candidate_error": null
+    },
+    {
+      "id": "citation-support-trap",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 4.16,
+      "candidate_seconds": 10.248,
+      "candidate_error": null
+    },
+    {
+      "id": "noncontiguous-excerpt",
+      "baseline": "valid",
+      "candidate": "valid",
+      "baseline_seconds": 5.708,
+      "candidate_seconds": 4.46,
+      "candidate_error": null
+    }
+  ]
+}

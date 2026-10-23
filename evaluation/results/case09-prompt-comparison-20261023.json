@@ -1,0 +1,40 @@
+{
+  "case": "markdown-citation",
+  "source": "Offline mode supports `text_only` files.",
+  "rows": [
+    {
+      "run": "旧提示词首次基线",
+      "file": "baseline-20261023.json",
+      "prompt_sha256": "9d4ffe8f8861e0f0c1b1f73c77b955c72305026382bc207232982a58fbfbe4a3",
+      "bullet": "离线模式支持 `text_only` 文件。",
+      "status": "valid",
+      "seconds": 6.747
+    },
+    {
+      "run": "新提示词首次测试",
+      "file": "candidate-citation-rules-20261023.json",
+      "prompt_sha256": "573971e10dc5d7bd9c8c104f79291acadbd35691f2376f97f9d098dc6c7cb935",
+      "bullet": "离线模式仅支持 `text_only` 类型的文件，这构成一项功能限制。",
+      "status": "valid",
+      "seconds": 7.769
+    },
+    {
+      "run": "新提示词单例重测",
+      "file": "case09-retest-20261023.json",
+      "prompt_sha256": "573971e10dc5d7bd9c8c104f79291acadbd35691f2376f97f9d098dc6c7cb935",
+      "bullet": "离线模式只支持 `text_only` 文件，因此非纯文本内容在离线场景下没有说明可用性，这是明确的适用范围限制。",
+      "status": "valid",
+      "seconds": 10.643
+    },
+    {
+      "run": "旧提示词单例重测",
+      "file": "case09-old-prompt-retest-20261023.json",
+      "prompt_sha256": "9d4ffe8f8861e0f0c1b1f73c77b955c72305026382bc207232982a58fbfbe4a3",
+      "bullet": "离线模式仅支持 `text_only` 文件。",
+      "status": "valid",
+      "seconds": 8.028
+    }
+  ],
+  "conclusion": "Old prompt also produced the unsupported exclusivity claim. This is not specific to the new rules. Two runs per prompt are insufficient to estimate error rates or attribute any probability change to the rule update.",
+  "interpretation": "Semantic over-inference is reproduced under both prompts; a lexical cue from text_only or the request for known limitations remains a hypothesis, not a verified cause."
+}

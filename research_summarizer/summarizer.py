@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from research_summarizer.models import SummaryResult
+from research_summarizer.models import SynthesisResult
 from research_summarizer.prompts import SUMMARIZE_SYSTEM_PROMPT
 
 
@@ -46,7 +46,7 @@ def _response_format() -> dict:
     if mode != "json_schema":
         raise ValueError("OPENAI_OUTPUT_FORMAT must be json_schema or json_object.")
 
-    schema = SummaryResult.model_json_schema()
+    schema = SynthesisResult.model_json_schema()
 
     def make_strict(node):
         if isinstance(node, dict):
@@ -63,7 +63,7 @@ def _response_format() -> dict:
     make_strict(schema)
     return {
         "type": "json_schema",
-        "json_schema": {"name": "SummaryResult", "strict": True, "schema": schema},
+        "json_schema": {"name": "SynthesisResult", "strict": True, "schema": schema},
     }
 
 

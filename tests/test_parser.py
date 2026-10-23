@@ -215,6 +215,28 @@ def test_rejects_missing_bullet_citation_when_evidence_exists():
         parse_summary(json.dumps(data), citation_evidence={"https://example.com": "relevant text"})
 
 
+@pytest.mark.parametrize("include_citations", [False, True])
+def test_off_topic_source_requires_citations_even_when_answer_is_unavailable(include_citations):
+    content = "Solace is a music festival. It takes place in June."
+    data = _cited_result(excerpt="Solace is a music festival.")
+    data["summary_bullets"] = [
+        "The source describes a music festival, not a battery.",
+        "The supplied festival description cannot establish battery cycle life.",
+        "No battery cycle count can be inferred from this source.",
+        "The request cannot be answered from the supplied festival content.",
+    ]
+    data["caveats"] = ["No relevant battery evidence was supplied."]
+    evidence = {"https://example.com": content}
+    if not include_citations:
+        data["citations"] = []
+        with pytest.raises(ParseError, match="every bullet needs a citation"):
+            parse_summary(json.dumps(data), citation_evidence=evidence)
+    else:
+        result = parse_summary(json.dumps(data), citation_evidence=evidence)
+        assert len(result.citations) == 4
+        assert result.summary_bullets == data["summary_bullets"]
+
+
 def test_rejects_excerpt_from_a_different_source():
     data = _cited_result(excerpt="only in other source")
     with pytest.raises(ParseError, match="excerpt is absent"):

@@ -1,0 +1,43 @@
+{
+"summary_bullets": [
+"该软件包需要 8 GB RAM。",
+"该软件包需要 Python 3.11。",
+"离线模式支持 text_only 文件。",
+"GPU 支持尚未经过测试。"
+],
+"key_details": "证据列出的部署条件为 8 GB RAM 和 Python 3.11。离线模式支持 text_only 文件，但未说明是否支持其他文件类型。GPU 支持未经测试，不能据此判断其可用性。",
+"sources": [
+{
+"title": "Fictional study 1",
+"url": "https://example.com/markdown-citation/1"
+}
+],
+"citations": [
+{
+"bullet_index": 0,
+"source_url": "https://example.com/markdown-citation/1",
+"excerpt": "The package needs 8 GB RAM and Python 3.11."
+},
+{
+"bullet_index": 1,
+"source_url": "https://example.com/markdown-citation/1",
+"excerpt": "The package needs 8 GB RAM and Python 3.11."
+},
+{
+"bullet_index": 2,
+"source_url": "https://example.com/markdown-citation/1",
+"excerpt": "Offline mode supports text_only files."
+},
+{
+"bullet_index": 3,
+"source_url": "https://example.com/markdown-citation/1",
+"excerpt": "GPU support was not tested"
+}
+],
+"caveats": [
+"证据未说明操作系统、存储空间、安装步骤或其他依赖要求。",
+"证据未说明其他 Python 版本是否兼容。",
+"离线模式支持 text_only 文件，不足以证明其他文件类型不受支持。",
+"GPU 未经测试不等于不受支持；其兼容性与性能均无法据此确认。"
+]
+}

@@ -163,12 +163,12 @@ def judge_evidence(
         return EvidenceResult(items=items)
 
     load_dotenv()
-    active_client = client if client is not None else build_client()
-    if active_client is None:
-        return EvidenceResult(items=items)
-
-    active_model = model or os.getenv("TYPESAFE_MODEL") or DEFAULT_TYPESAFE_MODEL
     try:
+        active_client = client if client is not None else build_client()
+        if active_client is None:
+            return EvidenceResult(items=items)
+
+        active_model = model or os.getenv("TYPESAFE_MODEL") or DEFAULT_TYPESAFE_MODEL
         with ThreadPoolExecutor(max_workers=min(MAX_JEV_WORKERS, len(items))) as pool:
             judgments = list(
                 pool.map(

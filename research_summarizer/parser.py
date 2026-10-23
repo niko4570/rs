@@ -11,7 +11,13 @@ from collections.abc import Collection, Mapping
 
 from pydantic import ValidationError
 
-from research_summarizer.models import SummaryResult
+from research_summarizer.models import (
+    BulletCitation,
+    Source,
+    SourceContent,
+    SummaryResult,
+    SynthesisResult,
+)
 
 
 class ParseError(Exception):
@@ -139,6 +145,53 @@ def parse_summary(
     return result
 
 
+def parse_synthesis(raw_answer: str, sources: Mapping[str, SourceContent]) -> SummaryResult:
+    """Resolve model-selected IDs using only Python-owned source metadata.
+
+    Match each excerpt against its exact ID before combining duplicate URLs, so
+    a valid ID cannot borrow text from another record with the same URL.
+    """
+    try:
+        data = json.loads(_extract_json(raw_answer))
+        draft = SynthesisResult.model_validate(data)
+    except (ParseError, json.JSONDecodeError, ValidationError) as exc:
+        raise ParseError(f"Synthesis validation failed: {exc}", raw_text=raw_answer) from exc
+
+    citations = []
+    listed: dict[str, Source] = {}
+    evidence: dict[str | None, str] = {}
+    for citation in draft.citations:
+        if citation.source_id not in sources:
+            raise ParseError("Source validation failed: unknown source ID.", raw_answer)
+        source = sources[citation.source_id]
+        _validate_excerpt(citation.excerpt, source.content, raw_answer)
+        citations.append(BulletCitation(
+            bullet_index=citation.bullet_index, source_url=source.url, excerpt=citation.excerpt
+        ))
+        if source.url is not None and source.url not in listed:
+            listed[source.url] = Source(title=source.title, url=source.url)
+
+    for source in sources.values():
+        evidence[source.url] = "\n".join(filter(None, [evidence.get(source.url), source.content]))
+    result = SummaryResult(
+        summary_bullets=draft.summary_bullets, key_details=draft.key_details,
+        caveats=draft.caveats, sources=list(listed.values()), citations=citations,
+    )
+    _validate_citations(result, evidence, raw_answer)
+    return result
+
+
+def _validate_excerpt(excerpt: str, content: str, raw_text: str) -> None:
+    excerpt = " ".join(_normalize_markdown(excerpt).split())
+    content = " ".join(_normalize_markdown(content).split())
+    if not excerpt:
+        raise ParseError(
+            "Citation validation failed: excerpt is empty after Markdown normalization.", raw_text
+        )
+    if excerpt not in content:
+        raise ParseError("Citation validation failed: excerpt is absent from the source.", raw_text)
+
+
 def _validate_citations(
     result: SummaryResult, evidence: Mapping[str | None, str], raw_text: str
 ) -> None:
@@ -152,15 +205,7 @@ def _validate_citations(
             raise ParseError("Citation validation failed: source is absent from the evidence.", raw_text)
         if citation.source_url is not None and citation.source_url not in listed_urls:
             raise ParseError("Citation validation failed: source is absent from sources.", raw_text)
-        excerpt = " ".join(_normalize_markdown(citation.excerpt).split())
-        content = " ".join(_normalize_markdown(evidence[citation.source_url]).split())
-        if not excerpt:
-            raise ParseError(
-                "Citation validation failed: excerpt is empty after Markdown normalization.",
-                raw_text,
-            )
-        if excerpt not in content:
-            raise ParseError("Citation validation failed: excerpt is absent from the source.", raw_text)
+        _validate_excerpt(citation.excerpt, evidence[citation.source_url], raw_text)
         cited_bullets.add(citation.bullet_index)
 
     if evidence and cited_bullets != set(range(len(result.summary_bullets))):
