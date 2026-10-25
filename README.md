@@ -8,6 +8,7 @@ A minimal, local-only research summarizer that accepts a topic, URL, or local te
 - **Evidence Selection**: Uses TypeSafe Jev to rank and keep the most relevant search sources
 - **URL Fetching**: Reads and summarizes web pages
 - **Local File Reading**: Processes local `.txt`, `.md`, or `.markdown` files within the project root
+- **Research History**: Automatically saves successful web-app summaries in IndexedDB, with a sidebar to reopen or delete them
 - **Source Attribution**: Python restores source titles and URLs from model-selected source IDs
 - **LangSmith Tracing**: Ready for tracing and debugging with LangSmith
 - **Multiple LLM Support**: Compatible with OpenAI and DeepSeek models
@@ -169,6 +170,19 @@ make dev
 Open http://localhost:5173. The backend runs at http://127.0.0.1:8000.
 Press Ctrl+C to stop both servers.
 
+Successful summaries are automatically saved in this browser's IndexedDB. The left
+sidebar lists them newest first; select one to view the original result without
+making another research request, or use its Delete button to remove it. New research
+starts a separate record. Each record contains the input text (or uploaded filename),
+input type, creation time, and the full summary including sources and citations.
+Uploaded file contents are not saved in history.
+
+History belongs to the current browser profile and frontend origin (scheme, host,
+and port). Use the same address each time; `localhost` and `127.0.0.1` have separate
+storage. Clearing site data removes history, and private browsing may discard it
+when closed. Storage failures are displayed without discarding the current result.
+History is frontend-only; the API and CLI do not persist results.
+
 To run them separately, use two terminals:
 
 ```bash
@@ -299,6 +313,15 @@ make test      # run backend tests
 make lint      # lint Python sources and tests with Ruff
 make build     # type-check and production-build the frontend
 make check     # run lint, backend tests, and frontend build
+```
+
+Browser history regression tests use Playwright with mocked research responses
+and real IndexedDB; no external research services or API keys are needed:
+
+```bash
+cd frontend
+npx playwright install chromium  # once, after npm install
+npm test
 ```
 
 Run `make help` to list all targets.

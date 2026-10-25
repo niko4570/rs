@@ -11,3 +11,8 @@ __pycache__/
 .pi/
 .agents/
 skills-lock.json
+
+# Frontend build and browser test output
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/

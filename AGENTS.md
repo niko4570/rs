@@ -33,7 +33,7 @@ The system should return a structured summary based only on acquired evidence. I
 Out of scope unless explicitly requested:
 
 - Multi-user accounts or authentication
-- Database, vector database, or persistent memory
+- Backend database, vector database, or persistent agent memory
 - RAG infrastructure
 - MCP servers
 - Multi-agent systems
@@ -43,6 +43,13 @@ Out of scope unless explicitly requested:
 - WebSockets, SSE, or streaming infrastructure
 - Cloud deployment infrastructure
 - General-purpose time-awareness services
+
+The web frontend may persist successful single-input/single-summary records in
+browser-local IndexedDB. This history stores the input text or uploaded filename,
+input type, timestamp, and complete `SummaryResult`; uploaded file contents are not
+stored. Reopening or deleting a record never calls the research workflow. History
+is scoped to the browser profile and frontend origin, with explicit storage errors.
+There is no backend persistence or conversation/multi-turn synthesis.
 
 ## Architecture
 
