@@ -210,6 +210,67 @@ test("sidebar and results fit a narrow screen", async ({ page }) => {
   });
 });
 
+for (const viewport of [
+  { width: 1920, height: 1080 },
+  { width: 375, height: 812 },
+]) {
+  test(`home fits ${viewport.width}px screen`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await expect(page.getByRole("textbox")).toBeVisible();
+    const hero = await page.locator(".hero").boundingBox();
+    expect(hero).not.toBeNull();
+    if (viewport.width > 900) {
+      expect(hero!.y).toBeLessThan(100);
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: test.info().outputPath("home.png"),
+      fullPage: true,
+    });
+  });
+
+  test(`processing fits ${viewport.width}px screen`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    // Hold the request so the processing layout can be inspected independently.
+    await page.route("**/api/research", () => {});
+    await page.getByRole("textbox").fill("A long research topic ".repeat(30));
+    await page.getByRole("button", { name: "SUMMARIZE" }).click();
+    await expect(page.getByText("HISTORY", { exact: true })).toBeVisible();
+    await expect(page.getByText("PROCESSING", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Generating structured summary..."),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    const main = await page.locator("main").boundingBox();
+    const progress = await page.locator(".progress").boundingBox();
+    expect(main).not.toBeNull();
+    expect(progress).not.toBeNull();
+    expect(progress!.x).toBeGreaterThanOrEqual(main!.x);
+    expect(progress!.x + progress!.width).toBeLessThanOrEqual(
+      main!.x + main!.width,
+    );
+    expect(progress!.y + progress!.height).toBeLessThanOrEqual(viewport.height);
+    if (viewport.width > 900) {
+      expect(progress!.width).toBeLessThan(viewport.width / 3);
+      expect(
+        Math.abs(progress!.y + progress!.height / 2 - viewport.height / 2),
+      ).toBeLessThan(2);
+    }
+    await page.screenshot({
+      path: test.info().outputPath("processing.png"),
+      fullPage: true,
+    });
+  });
+}
+
 async function abortWrites(page: Page) {
   await page.evaluate(() => {
     const original = IDBDatabase.prototype.transaction;

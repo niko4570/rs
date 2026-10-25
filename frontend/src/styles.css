@@ -64,8 +64,13 @@ main {
 
 /* ---------------------------------------------------------------- Home ---- */
 
+.input-main {
+  margin: 0 auto;
+  padding-block: clamp(32px, 6vh, 64px) 48px;
+}
+
 .hero {
-  max-width: 780px;
+  max-width: 920px;
   margin: 0 auto;
 }
 
@@ -74,7 +79,7 @@ main {
   font-size: 11px;
   color: var(--accent);
   letter-spacing: 0.16em;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 h1 {
@@ -90,7 +95,7 @@ h1 {
   line-height: 1.6;
   color: var(--muted);
   max-width: 570px;
-  margin-bottom: 45px;
+  margin-bottom: 30px;
 }
 
 .input-box {
@@ -288,14 +293,26 @@ input[type="file"] {
 
 /* ------------------------------------------------------- Processing ------ */
 
+.processing-main {
+  padding-block: clamp(40px, 6vh, 72px);
+}
+
+.progress {
+  max-width: 560px;
+}
+
 .steps {
   border-left: 1px solid var(--border);
-  margin: 40px 0 60px;
+  margin: 36px 0 0;
 }
 
 .step {
   padding: 0 0 34px 27px;
   position: relative;
+}
+
+.step:last-child {
+  padding-bottom: 0;
 }
 
 .step::before {
@@ -318,12 +335,13 @@ input[type="file"] {
 
 .step-name {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.1em;
 }
 
 .step-detail {
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 1.5;
   color: var(--muted);
   margin-top: 7px;
 }
@@ -639,5 +657,13 @@ button:focus-visible {
 @media (max-width: 650px) {
   main {
     padding: 40px 16px 60px;
+  }
+
+  .processing-main {
+    padding-block: 40px;
+  }
+
+  .input-main {
+    padding-block: 32px;
   }
 }

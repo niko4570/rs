@@ -22,7 +22,7 @@ export default function HistorySidebar({
   return (
     <aside className="history-sidebar" aria-label="Research history">
       <div className="history-heading">
-        <span className="label">RS / HISTORY</span>
+        <span className="label">HISTORY</span>
         <button
           type="button"
           className="history-new"

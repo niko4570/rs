@@ -12,7 +12,7 @@ export default function ResultView({ inputName, result, onReset }: Props) {
   return (
     <section className="result">
       <div className="topline">
-        <span className="label">RS / RESULT</span>
+        <span className="label">RESULT</span>
         <span className="file-name" title={inputName}>
           {inputName}
         </span>

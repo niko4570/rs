@@ -167,7 +167,15 @@ export default function App() {
         onDelete={handleDelete}
         onNew={handleReset}
       />
-      <main>
+      <main
+        className={
+          state.status === "idle"
+            ? "input-main"
+            : state.status === "processing"
+              ? "processing-main"
+              : undefined
+        }
+      >
         {historyError && (
           <p className="storage-error" role="alert">
             {historyError}
@@ -199,7 +207,7 @@ export default function App() {
         {state.status === "error" && (
           <section className="error">
             <div className="topline">
-              <span className="label">RS / ERROR</span>
+              <span className="label">ERROR</span>
             </div>
             <div className="error-panel">
               <h2 className="error-title">

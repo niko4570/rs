@@ -23,7 +23,7 @@ export default function ProcessingView({ inputName }: Props) {
   return (
     <section className="progress">
       <div className="topline">
-        <span className="label">RS / PROCESSING</span>
+        <span className="label">PROCESSING</span>
         <span className="file-name" title={inputName}>
           {inputName}
         </span>
